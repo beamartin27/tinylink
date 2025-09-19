@@ -12,9 +12,9 @@
 Build a tiny, reliable app that:
 
 - Shortens a long URL into a short code.  
-- Redirects visitors and increments a click counter.  
-- Shows a QR code for the short URL.  
-- (Extra Feature) Expiry date disables redirects after a set time.  
+- Redirects visitors.  
+- (Extra Feature) Shows a QR code for the short URL.  
+- (Optional, if only time permits) Expiry date disables redirects after a set time and keeping track of a click counter.  
 
 ---
 
@@ -73,8 +73,13 @@ Build a tiny, reliable app that:
 - **FR2:** List all links.  
 - **FR3:** Update target URL and/or expiry.  
 - **FR4:** Delete a link.  
-- **FR5:** Redirect by short code; increment click count; block if expired (410).  
+- **FR5:** Redirect by short code
 - **FR6:** Generate/serve QR image for a short code.  
+
+**Optional (only if time permits)**
+- **FR7:** Increment click count.
+- **FR8:** Expiry date; block if expired (410).  
+
 
 - **NFR1:** Simple, fast responses locally (CRUD ≤ 300 ms typical).  
 - **NFR2:** Input validation & proper error codes (400/404/410).  
