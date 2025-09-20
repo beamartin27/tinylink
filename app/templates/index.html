@@ -1,8 +1,82 @@
 <!doctype html>
 <html>
-  <head><meta charset="utf-8"><title>TinyLink+ PoC</title></head>
-  <body style="font-family: system-ui, sans-serif; padding: 2rem;">
-    <h1>👋 {{ msg }}</h1>
-    <p>If you can see this, FastAPI + Jinja2 is working.</p>
-  </body>
+<head>
+  <meta charset="utf-8"/>
+  <title>TinyLink+</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 2rem; }
+    input, button { padding: .5rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ddd; padding: .5rem; }
+    th { background: #f7f7f7; text-align: left; }
+    .row { display: flex; gap: .5rem; }
+  </style>
+</head>
+<body>
+  <h1>TinyLink+</h1>
+
+  <div class="row">
+    <input id="url" type="url" placeholder="https://example.com" style="flex: 1"/>
+    <input id="exp" type="datetime-local" />
+    <button onclick="createLink()">Create</button>
+  </div>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th>Short</th><th>Target</th><th>Created</th><th>Clicks</th><th>Expires</th><th>QR</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+const BASE = location.origin;
+
+async function fetchLinks() {
+  const res = await fetch(`${BASE}/api/links`);
+  const data = await res.json();
+  const tbody = document.querySelector("#tbl tbody");
+  tbody.innerHTML = "";
+  for (const r of data) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><a href="${r.short_url}" target="_blank">${r.short_url}</a></td>
+      <td title="${r.target_url}">${r.target_url}</td>
+      <td>${r.created_at ?? ""}</td>
+      <td>${r.click_count ?? 0}</td>
+      <td>${r.expires_at ?? ""}</td>
+      <td><a href="${BASE}/api/links/${r.short_code}/qr" target="_blank">PNG</a></td>
+      <td><button data-code="${r.short_code}" onclick="delLink(this)">Delete</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+async function createLink() {
+  const url = document.querySelector("#url").value.trim();
+  const exp = document.querySelector("#exp").value.trim();
+  const body = exp ? { target_url: url, expires_at: new Date(exp).toISOString() } : { target_url: url };
+  const res = await fetch(`${BASE}/api/links`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!res.ok) {
+    const e = await res.json().catch(()=>({}));
+    alert("Error creating link.\n" + JSON.stringify(e));
+    return;
+  }
+  document.querySelector("#url").value = "";
+  document.querySelector("#exp").value = "";
+  fetchLinks();
+}
+
+async function delLink(btn) {
+  const code = btn.getAttribute("data-code");
+  const res = await fetch(`${BASE}/api/links/${code}`, { method: "DELETE" });
+  if (!res.ok) { alert("Delete failed"); return; }
+  fetchLinks();
+}
+
+fetchLinks();
+</script>
+</body>
 </html>
