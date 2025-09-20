@@ -3,6 +3,7 @@ from typing import List
 from datetime import datetime, timezone
 from ..models import LinkCreate, LinkUpdate, LinkOut
 from .. import db
+from ..services.qrcodes import make_qr_png
 import os
 
 router = APIRouter()
@@ -55,3 +56,12 @@ def delete(code: str):
     if not ok:
         raise HTTPException(status_code=404, detail={"error":{"code":"NOT_FOUND","message":"Short code not found","details":{"code":code}}})
     return Response(status_code=204)
+
+@router.get("/{code}/qr")
+def qr_png(code: str):
+    rec = db.get_by_code(code)
+    if not rec:
+        raise HTTPException(status_code=404, detail={"error":{"code":"NOT_FOUND","message":"Short code not found","details":{"code":code}}})
+    short_url = f"{BASE_URL}/{rec['short_code']}"
+    png = make_qr_png(short_url)
+    return Response(content=png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
