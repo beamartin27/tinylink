@@ -1,33 +1,49 @@
+# app/main.py
+import os
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-import sqlite3
-from pathlib import Path
 
-app = FastAPI()
-templates = Jinja2Templates(directory="app/templates")
+# Internal modules per LLD
+from .db import init_db, DEFAULT_DB_PATH
+from .routers import links, redirect
 
-DB_PATH = Path("app.db")
+# Config (env-overridable)
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
+DB_PATH = Path(os.getenv("DB_PATH", str(DEFAULT_DB_PATH)))
 
-def init_db():
-    # create file + simple table just to confirm SQLite works
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS probe(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-        """)
-        conn.commit()
+# Templates (absolute path, so it works regardless of CWD)
+TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-@app.on_event("startup")
-def startup_event():
-    init_db()
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+def create_app() -> FastAPI:
+    app = FastAPI(title="TinyLink+")
 
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "msg": "TinyLink+ PoC OK"})
+    # Ensure DB schema is ready (links table + index)
+    init_db(DB_PATH)
+
+    # Mount API routers per HLD/LLD
+    # /api/links[...]  (CRUD + QR)
+    app.include_router(links.router, prefix="/api/links", tags=["links"])
+    # /{code}          (redirect 302 + expiry/analytics)
+    app.include_router(redirect.router, tags=["redirect"])
+
+    # Healthcheck (kept from your previous file)
+    @app.get("/health")
+    def health():
+        return {"status": "ok"}
+
+    # Minimal UI (kept from your previous file)
+    @app.get("/", response_class=HTMLResponse)
+    def home(request: Request):
+        # You can pass extra context if needed
+        return templates.TemplateResponse("index.html", {"request": request, "msg": "TinyLink+ Ready"})
+
+    return app
+
+
+# ASGI entrypoint for uvicorn
+app = create_app()
