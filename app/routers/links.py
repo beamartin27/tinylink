@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from ..models import LinkCreate, LinkUpdate, LinkOut
 from .. import db
 from ..services.qrcodes import make_qr_png
+from ..services.codes import generate_unique_code
+from ..utils import err
 import os
 
 router = APIRouter()
@@ -26,8 +28,8 @@ def _to_link_out(rec: dict) -> LinkOut:
 def create_link(payload: LinkCreate):
     # Pydantic already validated AnyUrl; extra guard (length, scheme) optional
     if len(str(payload.target_url)) > 500:
-        raise HTTPException(status_code=400, detail={"error": {"code": "VALIDATION_ERROR","message": "target_url too long","details":{"field":"target_url"}}})
-    code = __import__("..services.codes".replace("..","app")).services.codes.generate_unique_code(db.exists_code)
+        raise HTTPException(status_code=400, detail=err("VALIDATION_ERROR", "target_url too long", {"field": "target_url", "max": 500}))
+    code = generate_unique_code(db.exists_code)
     rec = db.insert_link(code, str(payload.target_url), payload.expires_at)
     return _to_link_out(rec)
 
@@ -40,28 +42,28 @@ def list_all():
 def detail(code: str):
     rec = db.get_by_code(code)
     if not rec:
-        raise HTTPException(status_code=404, detail={"error":{"code":"NOT_FOUND","message":"Short code not found","details":{"code":code}}})
+        raise HTTPException(status_code=404, detail=err("NOT_FOUND", "Short code not found", {"code": code}))
     return _to_link_out(rec)
 
 @router.put("/{code}", response_model=LinkOut)
 def update(code: str, payload: LinkUpdate):
     rec = db.update_link(code, str(payload.target_url) if payload.target_url else None, payload.expires_at)
     if rec is None:
-        raise HTTPException(status_code=404, detail={"error":{"code":"NOT_FOUND","message":"Short code not found","details":{"code":code}}})
+        raise HTTPException(status_code=404, detail=err("NOT_FOUND", "Short code not found", {"code": code}))
     return _to_link_out(rec)
 
 @router.delete("/{code}", status_code=204)
 def delete(code: str):
     ok = db.delete_link(code)
     if not ok:
-        raise HTTPException(status_code=404, detail={"error":{"code":"NOT_FOUND","message":"Short code not found","details":{"code":code}}})
+        raise HTTPException(status_code=404, detail=err("NOT_FOUND", "Short code not found", {"code": code}))
     return Response(status_code=204)
 
 @router.get("/{code}/qr")
 def qr_png(code: str):
     rec = db.get_by_code(code)
     if not rec:
-        raise HTTPException(status_code=404, detail={"error":{"code":"NOT_FOUND","message":"Short code not found","details":{"code":code}}})
+        raise HTTPException(status_code=404, detail=err("NOT_FOUND", "Short code not found", {"code": code}))
     short_url = f"{BASE_URL}/{rec['short_code']}"
     png = make_qr_png(short_url)
     return Response(content=png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})

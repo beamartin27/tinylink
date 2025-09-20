@@ -3,12 +3,14 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.exceptions import RequestValidationError
 
 # Internal modules per LLD
 from .db import init_db, DEFAULT_DB_PATH
 from .routers import links, redirect
+from .utils import err
 
 # Config (env-overridable)
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
@@ -21,6 +23,10 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 def create_app() -> FastAPI:
     app = FastAPI(title="TinyLink+")
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request, exc: RequestValidationError):
+        return JSONResponse(status_code=400, content=err("VALIDATION_ERROR", "Invalid request body", {"errors": exc.errors()}))
 
     # Ensure DB schema is ready (links table + index)
     init_db(DB_PATH)
