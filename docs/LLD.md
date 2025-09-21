@@ -186,6 +186,7 @@ tinylink/
     main.py              # FastAPI app factory, router registration
     db.py                # SQLite helpers + CRUD
     models.py            # Pydantic DTOs
+    utils.py             # helper
     routers/
       links.py           # CRUD + QR
       redirect.py        # GET /{code}

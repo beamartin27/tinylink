@@ -12,11 +12,12 @@ def redirect(code: str):
     if not rec:
         raise HTTPException(status_code=404, detail=err("NOT_FOUND", "Short code not found", {"code": code}))
     # expiry check
-    if rec.get("expires_at"):
-        exp = datetime.fromisoformat(rec["expires_at"])
+    exp_raw = rec.get("expires_at")
+    if exp_raw:
+        exp = datetime.fromisoformat(exp_raw)
         now = datetime.now(timezone.utc).astimezone(exp.tzinfo) if exp.tzinfo else datetime.now()
         if now > exp:
-            raise HTTPException(status_code=410, detail=err("EXPIRED", "Link has expired", {"code": code, "expires_at": exp}))
+            raise HTTPException(410, detail=err("EXPIRED", "Link has expired", {"code": code, "expires_at": exp}))
     # analytics (optional)
     db.increment_click(code)
     db.update_last_access(code, datetime.now())

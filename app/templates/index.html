@@ -10,22 +10,35 @@
     table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
     th, td { border: 1px solid #ddd; padding: .5rem; }
     th { background: #f7f7f7; text-align: left; }
-    .row { display: flex; gap: .5rem; }
+    .row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+    .actions button { margin-right: .25rem; }
+    .muted { color: #666; font-size: 0.9em; }
+    .wide { flex: 1; min-width: 280px; }
   </style>
 </head>
 <body>
   <h1>TinyLink+</h1>
 
+  <!-- Controls row (Create / Save / Refresh) -->
   <div class="row">
-    <input id="url" type="url" placeholder="https://example.com" style="flex: 1"/>
+    <input id="url" class="wide" type="url" placeholder="https://example.com"/>
     <input id="exp" type="datetime-local" />
-    <button onclick="createLink()">Create</button>
+    <button id="createBtn" onclick="createLink()">Create</button>
+    <button id="saveBtn" onclick="saveLink()" style="display:none">Save</button>
+    <button onclick="fetchLinks()">Refresh</button>
+    <span id="status" class="muted"></span>
   </div>
 
   <table id="tbl">
     <thead>
       <tr>
-        <th>Short</th><th>Target</th><th>Created</th><th>Clicks</th><th>Expires</th><th>QR</th><th>Actions</th>
+        <th>Short</th>
+        <th>Target</th>
+        <th>Created</th>
+        <th>Clicks</th>
+        <th>Expires</th>
+        <th>QR</th>
+        <th>Actions</th> <!-- This is the "actions column" -->
       </tr>
     </thead>
     <tbody></tbody>
@@ -33,8 +46,11 @@
 
 <script>
 const BASE = location.origin;
+let editingCode = null;
 
+// -------- Fetch & Render --------
 async function fetchLinks() {
+  setStatus("Loading...");
   const res = await fetch(`${BASE}/api/links`);
   const data = await res.json();
   const tbody = document.querySelector("#tbl tbody");
@@ -43,25 +59,58 @@ async function fetchLinks() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><a href="${r.short_url}" target="_blank">${r.short_url}</a></td>
-      <td title="${r.target_url}">${r.target_url}</td>
-      <td>${r.created_at ?? ""}</td>
+      <td title="${r.target_url}">${escapeHtml(r.target_url)}</td>
+      <td>${fmtNullable(r.created_at)}</td>
       <td>${r.click_count ?? 0}</td>
-      <td>${r.expires_at ?? ""}</td>
+      <td>${fmtNullable(r.expires_at)}</td>
       <td><a href="${BASE}/api/links/${r.short_code}/qr" target="_blank">PNG</a></td>
-      <td><button data-code="${r.short_code}" onclick="delLink(this)">Delete</button></td>
+      <td class="actions">
+        <button onclick="viewLink('${r.short_code}')">View</button>
+        <button onclick="editLink('${r.short_code}','${escapeAttr(r.target_url)}','${r.expires_at ?? ''}')">Edit</button>
+        <button onclick="delLink('${r.short_code}')">Delete</button>
+      </td>
     `;
     tbody.appendChild(tr);
   }
+  setStatus(`Loaded ${data.length} link(s).`);
 }
 
+function setStatus(msg) {
+  document.getElementById("status").textContent = msg || "";
+}
+
+function fmtNullable(val) {
+  if (!val) return "";
+  // Render ISO strings in a friendly way
+  try {
+    const d = new Date(val);
+    if (!isNaN(d)) return d.toLocaleString();
+  } catch {}
+  return String(val);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function escapeAttr(s) {
+  // Escapes quotes so it can be injected in onclick attribute safely
+  return String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// -------- Create --------
 async function createLink() {
   const url = document.querySelector("#url").value.trim();
   const exp = document.querySelector("#exp").value.trim();
   const body = exp ? { target_url: url, expires_at: new Date(exp).toISOString() } : { target_url: url };
-  const res = await fetch(`${BASE}/api/links`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const res = await fetch(`${BASE}/api/links`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
   if (!res.ok) {
     const e = await res.json().catch(()=>({}));
-    alert("Error creating link.\n" + JSON.stringify(e));
+    alert("Error creating link.\n" + JSON.stringify(e, null, 2));
     return;
   }
   document.querySelector("#url").value = "";
@@ -69,13 +118,59 @@ async function createLink() {
   fetchLinks();
 }
 
-async function delLink(btn) {
-  const code = btn.getAttribute("data-code");
+// -------- Edit / Save (UPDATE) --------
+function editLink(code, url, exp) {
+  editingCode = code;
+  document.querySelector("#url").value = url;
+  document.querySelector("#exp").value = exp ? new Date(exp).toISOString().slice(0,16) : "";
+  document.querySelector("#createBtn").style.display = "none";
+  document.querySelector("#saveBtn").style.display = "inline-block";
+  setStatus(`Editing ${code}...`);
+}
+
+async function saveLink() {
+  if (!editingCode) return;
+  const url = document.querySelector("#url").value.trim();
+  const exp = document.querySelector("#exp").value.trim();
+  const body = {};
+  if (url) body.target_url = url;
+  if (exp) body.expires_at = new Date(exp).toISOString();
+
+  const res = await fetch(`${BASE}/api/links/${editingCode}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(()=>({}));
+    alert("Update failed.\n" + JSON.stringify(e, null, 2));
+    return;
+  }
+  editingCode = null;
+  document.querySelector("#url").value = "";
+  document.querySelector("#exp").value = "";
+  document.querySelector("#createBtn").style.display = "inline-block";
+  document.querySelector("#saveBtn").style.display = "none";
+  setStatus("Saved.");
+  fetchLinks();
+}
+
+// -------- Delete --------
+async function delLink(code) {
+  if (!confirm(`Delete ${code}?`)) return;
   const res = await fetch(`${BASE}/api/links/${code}`, { method: "DELETE" });
   if (!res.ok) { alert("Delete failed"); return; }
   fetchLinks();
 }
 
+// -------- View detail (GET /api/links/{code}) --------
+async function viewLink(code) {
+  const res = await fetch(`${BASE}/api/links/${code}`);
+  const data = await res.json();
+  alert(JSON.stringify(data, null, 2));
+}
+
+// Auto-load on page open
 fetchLinks();
 </script>
 </body>

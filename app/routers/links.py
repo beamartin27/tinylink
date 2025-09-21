@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response, Request
 from typing import List
 from datetime import datetime, timezone
 from ..models import LinkCreate, LinkUpdate, LinkOut
@@ -12,8 +12,8 @@ router = APIRouter()
 
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
-def _to_link_out(rec: dict) -> LinkOut:
-    short_url = f"{BASE_URL}/{rec['short_code']}"
+def _to_link_out(rec: dict, base:str) -> LinkOut:
+    short_url = f"{base}/{rec['short_code']}"
     return LinkOut(
         short_code=rec["short_code"],
         target_url=rec["target_url"],
@@ -25,25 +25,28 @@ def _to_link_out(rec: dict) -> LinkOut:
     )
 
 @router.post("", response_model=LinkOut, status_code=201)
-def create_link(payload: LinkCreate):
+def create_link(payload: LinkCreate, request: Request):
     # Pydantic already validated AnyUrl; extra guard (length, scheme) optional
     if len(str(payload.target_url)) > 500:
         raise HTTPException(status_code=400, detail=err("VALIDATION_ERROR", "target_url too long", {"field": "target_url", "max": 500}))
     code = generate_unique_code(db.exists_code)
     rec = db.insert_link(code, str(payload.target_url), payload.expires_at)
-    return _to_link_out(rec)
+    base = str(request.base_url).rstrip("/")
+    return _to_link_out(rec, base)
 
 @router.get("", response_model=List[LinkOut])
-def list_all():
+def list_all(request: Request):
+    base = str(request.base_url).rstrip("/")
     rows = db.list_links()
-    return [_to_link_out(r) for r in rows]
+    return [_to_link_out(r, base) for r in rows]
 
 @router.get("/{code}", response_model=LinkOut)
-def detail(code: str):
+def detail(code: str, request: Request):
     rec = db.get_by_code(code)
     if not rec:
         raise HTTPException(status_code=404, detail=err("NOT_FOUND", "Short code not found", {"code": code}))
-    return _to_link_out(rec)
+    base = str(request.base_url).rstrip("/")
+    return _to_link_out(rec, base)
 
 @router.put("/{code}", response_model=LinkOut)
 def update(code: str, payload: LinkUpdate):
@@ -60,10 +63,11 @@ def delete(code: str):
     return Response(status_code=204)
 
 @router.get("/{code}/qr")
-def qr_png(code: str):
+def qr_png(code: str, request: Request):
     rec = db.get_by_code(code)
     if not rec:
         raise HTTPException(status_code=404, detail=err("NOT_FOUND", "Short code not found", {"code": code}))
-    short_url = f"{BASE_URL}/{rec['short_code']}"
+    base = str(request.base_url).rstrip("/")
+    short_url = f"{base}/{rec['short_code']}"
     png = make_qr_png(short_url)
     return Response(content=png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
