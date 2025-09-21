@@ -49,11 +49,12 @@ def detail(code: str, request: Request):
     return _to_link_out(rec, base)
 
 @router.put("/{code}", response_model=LinkOut)
-def update(code: str, payload: LinkUpdate):
+def update(code: str, payload: LinkUpdate, request: Request):
     rec = db.update_link(code, str(payload.target_url) if payload.target_url else None, payload.expires_at)
     if rec is None:
         raise HTTPException(status_code=404, detail=err("NOT_FOUND", "Short code not found", {"code": code}))
-    return _to_link_out(rec)
+    base = str(request.base_url).rstrip("/")
+    return _to_link_out(rec, base)
 
 @router.delete("/{code}", status_code=204)
 def delete(code: str):
