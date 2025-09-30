@@ -81,7 +81,7 @@ Follow the **recommended** steps to deploy the web publicly, enabling access fro
 
 ```bash
 # 1) Clone
-git clone <your-repo-url>
+git clone <https://github.com/beamartin27/tinylink>
 cd tinylink
 
 # 2) Create venv & install

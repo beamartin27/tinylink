@@ -1,14 +1,20 @@
 import sqlite3
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
 
-DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "app.db"
+# Single, consistent DB path (project root: app.db)
+DEFAULT_DB_PATH = Path("app.db")
+
+# Sentinel to express "no change" on updates
+NOCHANGE = object()
+
 
 def _connect(db_path: Path = DEFAULT_DB_PATH) -> sqlite3.Connection:
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_db(db_path: Path = DEFAULT_DB_PATH) -> None:
     with _connect(db_path) as conn:
@@ -28,8 +34,10 @@ def init_db(db_path: Path = DEFAULT_DB_PATH) -> None:
         )
         conn.commit()
 
+
 def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
     return dict(row) if row else None
+
 
 def get_by_code(code: str, db_path: Path = DEFAULT_DB_PATH) -> Optional[Dict[str, Any]]:
     with _connect(db_path) as conn:
@@ -37,13 +45,15 @@ def get_by_code(code: str, db_path: Path = DEFAULT_DB_PATH) -> Optional[Dict[str
         row = cur.fetchone()
         return _row_to_dict(row)
 
+
 def list_links(db_path: Path = DEFAULT_DB_PATH) -> List[Dict[str, Any]]:
     with _connect(db_path) as conn:
         cur = conn.execute("SELECT * FROM links ORDER BY datetime(created_at) DESC")
         return [dict(r) for r in cur.fetchall()]
 
+
 def insert_link(code: str, target_url: str, expires_at: Optional[datetime], db_path: Path = DEFAULT_DB_PATH) -> Dict[str, Any]:
-    expires_txt = expires_at.isoformat() if expires_at else None
+    expires_txt = expires_at.isoformat() if isinstance(expires_at, datetime) else None
     with _connect(db_path) as conn:
         conn.execute(
             "INSERT INTO links (short_code, target_url, expires_at) VALUES (?, ?, ?)",
@@ -53,23 +63,42 @@ def insert_link(code: str, target_url: str, expires_at: Optional[datetime], db_p
         cur = conn.execute("SELECT * FROM links WHERE short_code = ?", (code,))
         return dict(cur.fetchone())
 
-def update_link(code: str, target_url: Optional[str], expires_at: Optional[datetime], db_path: Path = DEFAULT_DB_PATH) -> Optional[Dict[str, Any]]:
+
+def update_link(short_code: str, target_url=NOCHANGE, expires_at=NOCHANGE, db_path: Path = DEFAULT_DB_PATH):
+    """
+    Update only the fields that were passed (sentinel NOCHANGE means keep as-is).
+    expires_at may be datetime, None (to clear), or NOCHANGE.
+    """
     with _connect(db_path) as conn:
-        sets, vals = [], []
-        if target_url is not None:
+        sets, params = [], []
+
+        if target_url is not NOCHANGE:
             sets.append("target_url = ?")
-            vals.append(target_url)
-        if expires_at is not None:
+            params.append(str(target_url) if target_url is not None else None)
+
+        if expires_at is not NOCHANGE:
             sets.append("expires_at = ?")
-            vals.append(expires_at.isoformat())
+            if expires_at is None:
+                params.append(None)  # clear
+            elif isinstance(expires_at, datetime):
+                params.append(expires_at.isoformat())
+            else:
+                # if Pydantic passed a string (rare), normalize to str
+                params.append(str(expires_at))
+
         if not sets:
-            return get_by_code(code, db_path)
-        vals.append(code)
-        cur = conn.execute(f"UPDATE links SET {', '.join(sets)} WHERE short_code = ?", vals)
+            row = conn.execute("SELECT * FROM links WHERE short_code = ?", (short_code,)).fetchone()
+            return dict(row) if row else None
+
+        params.append(short_code)
+        cur = conn.execute(f"UPDATE links SET {', '.join(sets)} WHERE short_code = ?", params)
         conn.commit()
         if cur.rowcount == 0:
             return None
-        return get_by_code(code, db_path)
+
+        row = conn.execute("SELECT * FROM links WHERE short_code = ?", (short_code,)).fetchone()
+        return dict(row) if row else None
+
 
 def delete_link(code: str, db_path: Path = DEFAULT_DB_PATH) -> bool:
     with _connect(db_path) as conn:
@@ -77,17 +106,23 @@ def delete_link(code: str, db_path: Path = DEFAULT_DB_PATH) -> bool:
         conn.commit()
         return cur.rowcount > 0
 
+
 def exists_code(code: str, db_path: Path = DEFAULT_DB_PATH) -> bool:
     with _connect(db_path) as conn:
         cur = conn.execute("SELECT 1 FROM links WHERE short_code = ? LIMIT 1", (code,))
         return cur.fetchone() is not None
+
 
 def increment_click(code: str, db_path: Path = DEFAULT_DB_PATH) -> None:
     with _connect(db_path) as conn:
         conn.execute("UPDATE links SET click_count = click_count + 1 WHERE short_code = ?", (code,))
         conn.commit()
 
-def update_last_access(code: str, dt: datetime, db_path: Path = DEFAULT_DB_PATH) -> None:
+
+def update_last_access(code: str, dt: Union[datetime, str], db_path: Path = DEFAULT_DB_PATH) -> None:
+    """Accept datetime or ISO string for convenience."""
+    if isinstance(dt, datetime):
+        dt = dt.isoformat()
     with _connect(db_path) as conn:
-        conn.execute("UPDATE links SET last_access_at = ? WHERE short_code = ?", (dt.isoformat(), code))
+        conn.execute("UPDATE links SET last_access_at = ? WHERE short_code = ?", (dt, code))
         conn.commit()

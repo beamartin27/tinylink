@@ -35,7 +35,6 @@
   th, td { padding:.6rem; border-bottom:1px solid var(--border); vertical-align:top; }
   th { text-align:left; color:var(--muted); font-weight:600; }
   td a { color:var(--accent); text-decoration:none; }
-  .actions button { margin-right:.25rem; }
 
   /* wrap long targets and constrain column width */
   .cell-target { max-width: 48vw; white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
@@ -60,6 +59,37 @@
   .modal main { padding:1rem; }
   .modal pre { background:#0e1015; border:1px solid var(--border); padding:.75rem; border-radius:.6rem; overflow:auto; max-height:60vh; }
   .modal footer { padding:.75rem 1rem; border-top:1px solid var(--border); text-align:right; }
+
+  /* Table sizing & wrapping */
+  table { font-size: 0.95rem; }              /* a bit smaller */
+  td, th { line-height: 1.25; }
+  td:nth-child(2) { white-space: normal; }    /* target column wraps nicely */
+
+  /* Status/Expires stacked */
+  .status {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+  }
+  .small { font-size: .85rem; color: var(--muted); }
+
+  /* Actions as uniform icon buttons */
+  .actions { display:flex; gap:.4rem; }
+  .iconbtn {
+    display:inline-flex; align-items:center; justify-content:center;
+    width: 36px; height: 36px; border-radius:.6rem;
+    border:1px solid var(--border); background:var(--panel);
+    transition: transform .08s ease, background .12s ease, border-color .12s ease;
+  }
+  .iconbtn:hover { transform: translateY(-1px); }
+  .iconbtn:active { transform: translateY(0); }
+
+  /* Semantic variants */
+  .iconbtn.view  { background:#18202a; border-color:#233040; }
+  .iconbtn.edit  { background:#1a202c; border-color:#2a3342; }
+  .iconbtn.del   { background:#2a1517; border-color:#3b1f22; }
+  .iconbtn svg { width:18px; height:18px; }
+
   </style>
 </head>
 <body>
@@ -190,24 +220,40 @@ async function fetchLinks() {
   tbody.innerHTML = "";
   for (const r of data) {
     const active = isActive(r.expires_at);
-    const badge = r.expires_at
-      ? `<span class="badge ${active?'ok':'exp'}">${active?'Active':'Expired'}</span> ${fmtNullable(r.expires_at)}`
-      : `<span class="badge ok">Active</span>`;
+    const statusHtml = `
+    <div class="status">
+      <span class="badge ${r.expires_at && new Date(r.expires_at) > new Date() ? 'ok' : (r.expires_at ? 'exp' : 'ok')}">
+        ${!r.expires_at ? 'Active' : (new Date(r.expires_at) > new Date() ? 'Active' : 'Expired')}
+      </span>
+      <div class="small">${r.expires_at ? fmtExpiryShort(r.expires_at) : ''}</div>
+    </div>`;
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>
-        <a href="${r.short_url}" target="_blank">${r.short_url}</a>
-        <button class="ghost" title="Copy" onclick="copyText('${r.short_url}')">📋</button>
+        <a href="${r.short_url}?t=${Date.now()}" target="_blank">${r.short_url}</a>
+        <button class="iconbtn" title="Copy" onclick="copyText('${r.short_url}')" aria-label="Copy">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"/></svg>
+        </button>
       </td>
+
       <td class="cell-target" title="${r.target_url}">${escapeHtml(r.target_url)}</td>
       <td>${fmtNullable(r.created_at)}</td>
       <td>${r.click_count ?? 0}</td>
-      <td>${badge}</td>
+      <td>${statusHtml}</td>
       <td><img class="qr" src="${BASE}/api/links/${r.short_code}/qr" alt="QR" onclick="openQR('${r.short_code}')"/></td>
       <td class="actions">
-        <button class="ghost" onclick="viewLink('${r.short_code}')" title="View">👁️</button>
-        <button class="ghost" onclick="editLink('${r.short_code}','${escapeAttr(r.target_url)}','${r.expires_at ?? ''}')" title="Edit">✏️</button>
-        <button class="ghost danger" onclick="delLink('${r.short_code}')" title="Delete">🗑️</button>
+        <!-- view -->
+        <button class="iconbtn view" title="View details" onclick="viewLink('${r.short_code}')" aria-label="View">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/></svg>
+        </button>
+        <!-- edit -->
+        <button class="iconbtn edit" title="Edit" onclick="editLink('${r.short_code}','${escapeAttr(r.target_url)}','${r.expires_at ?? ''}')" aria-label="Edit">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25Zm2.92 2.83H5v-.92l8.06-8.06.92.92-8.06 8.06ZM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/></svg>
+        </button>
+        <!-- delete -->
+        <button class="iconbtn del" title="Delete" onclick="delLink('${r.short_code}')" aria-label="Delete">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6a1 1 0 0 1 1 1v1h4v2H4V5h4V4a1 1 0 0 1 1-1Zm-2 6h10l-1 11a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2L7 9Z"/></svg>
+        </button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -231,7 +277,7 @@ async function createLink() {
 // ---------- Edit / Save (UPDATE) ----------
 function editLink(code, url, exp) {
   document.querySelector("#url").value = url;
-  document.querySelector("#exp").value = exp ? new Date(exp).toISOString().slice(0,16) : "";
+  document.querySelector("#exp").value = isoToLocalInput(exp);
   enterEditing(code);
   setStatus(`Editing ${code}...`);
 }
@@ -239,11 +285,18 @@ async function saveLink() {
   if (!editingCode) return;
   showError(null);
   const url = document.querySelector("#url").value.trim();
-  const exp = document.querySelector("#exp").value.trim();
+  const expLocal = document.querySelector("#exp").value.trim();
+
   const body = {};
   if (url) body.target_url = url;
-  if (exp) body.expires_at = new Date(exp).toISOString();
-  const res = await fetch(`${BASE}/api/links/${editingCode}`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) });
+  if (expLocal) body.expires_at = localInputToIso(expLocal);  // always ISO UTC
+  // Optional: allow clearing if the input was emptied:
+  if (!expLocal && url) { /* only target changed */ }
+  if (!expLocal && !url) { /* nothing changed */ }
+
+  const res = await fetch(`${BASE}/api/links/${editingCode}`, {
+    method:"PUT", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body)
+  });
   if (!res.ok) { showError(await readError(res)); return; }
   cancelEdit();
   showToast("Saved");
@@ -275,6 +328,39 @@ function openQR(code) {
   document.getElementById("qrDlg").showModal();
 }
 function closeQR(){ document.getElementById("qrDlg").close(); }
+
+// Convert ISO (UTC) to datetime-local value in **local time**
+function isoToLocalInput(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  const mm = pad(d.getMonth()+1);
+  const dd = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const ii = pad(d.getMinutes());
+  return `${yyyy}-${mm}-${dd}T${hh}:${ii}`;
+}
+
+// Convert datetime-local (interpreted as local) back to ISO UTC
+function localInputToIso(s) {
+  if (!s) return null;
+  const d = new Date(s);           // parsed as local
+  return d.toISOString();          // convert to UTC ISO
+}
+
+function fmtExpiryShort(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d)) return String(iso);
+  // dd/mm/yyyy, hh:mm (24h)
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2,'0');
+  const ii = String(d.getMinutes()).padStart(2,'0');
+  return `${dd}/${mm}/${yyyy}, ${hh}:${ii}`;
+}
 
 // Auto-load on page open
 fetchLinks();

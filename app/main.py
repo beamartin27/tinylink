@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.exceptions import RequestValidationError
@@ -25,8 +25,32 @@ def create_app() -> FastAPI:
     app = FastAPI(title="TinyLink+")
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request, exc: RequestValidationError):
-        return JSONResponse(status_code=400, content=err("VALIDATION_ERROR", "Invalid request body", {"errors": exc.errors()}))
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        return JSONResponse(
+            status_code=400,
+            content=err("VALIDATION_ERROR", "Invalid request body", {"errors": exc.errors()}),
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+    
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException):
+        # If your endpoints already build the standard envelope with `err(...)`,
+        # keep it. If not, wrap whatever came in.
+        content = exc.detail if isinstance(exc.detail, dict) else err("HTTP_ERROR", str(exc.detail))
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=content,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+
 
     # Ensure DB schema is ready (links table + index)
     init_db(DB_PATH)
