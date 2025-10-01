@@ -189,3 +189,31 @@ curl -s -X DELETE "$HOST/api/links/3aqPiV"
 - **QR doesn't work** on mobile locally: Make sure you’re using the ngrok HTTPS URL as HOST.
 - **Errors**: UI shows a red bar with the message from the JSON error.
 - **Datetime**: uses ISO-8601 (UTC recommended).
+
+## Running tests
+
+These tests run entirely in-process (no Uvicorn/ngrok needed).  
+They create a **temporary SQLite DB** per test, so your real `app.db` is untouched.
+
+### 0) Install dependencies (including test libs)
+```bash
+pip install -r requirements.txt
+# or minimum for tests:
+pip install pytest httpx
+```
+
+### 1) Run the full suite from the repo
+```bash
+python -m pytest -q
+```
+
+### 2) Useful commands
+```bash
+# Run without verbose output
+pytest -vv
+
+# Run a single test by name
+pytest -k T5 -vv
+
+# Stop on first failure
+pytest -q --maxfail=1 --disable-warnings
