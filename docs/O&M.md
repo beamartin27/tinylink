@@ -42,10 +42,10 @@ docker run \
   - Expect HTTP 200
   - Retry & alert (email) on >2 consecutive failures.
 
-### 2.3 Basic metrics (Assignment 2 hook)
+### 2.3 Basic metrics
 
 - **Counters** to add later: total redirects, 410 expired responses, create/update/delete counts.
-- **Plan**: expose `/metrics` (Prometheus format) in Assignment 2.
+- **Plan**: expose `/metrics` (Prometheus format) if we want to grow.
 
 ---
 
@@ -81,7 +81,7 @@ sqlite3 app.db "PRAGMA integrity_check; VACUUM;"
 ### 3.3 Schema change policy
 
 - Keep **idempotent** `CREATE TABLE IF NOT EXISTS` in `init_db`.
-- For real migrations later: adopt Alembic (when moving to Postgres in Assignment 2).
+- For real migrations later: adopt Alembic (if more capacity needed, moving to Postgres).
 
 ---
 
@@ -100,7 +100,7 @@ sqlite3 app.db "PRAGMA integrity_check; VACUUM;"
 - **Startup**: FastAPI + SQLite is lightweight.
 - **Hot paths**: `/redirect` read + two quick updates (clicks, last_access_at).
 - **DB locks**: SQLite is fine for low concurrency; for heavier load move to **Postgres** (planned).
-- **HTTP tuning**: keep default Uvicorn workers=1 for dev; scale to more workers behind a reverse proxy if needed (Assignment 2).
+- **HTTP tuning**: keep default Uvicorn workers=1 for dev; scale to more workers behind a reverse proxy if needed.
 
 ---
 
@@ -113,7 +113,7 @@ sqlite3 app.db "PRAGMA integrity_check; VACUUM;"
 
 ---
 
-## 7. Continuous Improvement Backlog (Assignment 2)
+## 7. Continuous Improvement Backlog - possible future improvements
 
 - **Rate limiting** (protect redirect and POST endpoints).
 - **Custom aliases** (user-chosen short codes; validate collisions).
