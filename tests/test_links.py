@@ -1,5 +1,5 @@
 # tests/test_links.py
-import os, tempfile, json
+import os, tempfile, json, shutil
 from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
@@ -15,13 +15,17 @@ def norm(u: str) -> str:
 
 
 def make_client_with_tmpdb():
-    # DB temporal por prueba
-    tmp = tempfile.NamedTemporaryFile(delete=False)
-    tmp.close()
-    db.DEFAULT_DB_PATH = tmp.name   # redirige el path que usa db.py
-    db.init_db()                    # crea tablas
+    tmpdb = tempfile.NamedTemporaryFile(delete=False)
+    tmpdb.close()
+    os.environ["APP_DB_PATH"] = tmpdb.name  # set BEFORE importing app
+
+    from app.main import create_app  # import now, picks up APP_DB_PATH
     app = create_app()
-    return TestClient(app, follow_redirects=False), tmp.name
+    from app import db
+    db.init_db()  # against tmp DB
+
+    client = TestClient(app, follow_redirects=False)
+    return client, tmpdb.name
 
 def iso_utc(dt: datetime) -> str:
     if dt.tzinfo is None:

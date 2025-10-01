@@ -1,5 +1,4 @@
 # app/main.py
-import os
 from pathlib import Path
 
 from fastapi import FastAPI, Request, HTTPException
@@ -7,14 +6,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.exceptions import RequestValidationError
 
-# Internal modules per LLD
-from .db import init_db, DEFAULT_DB_PATH
+# Internal modules per HLD/LLD
+from .db import init_db
 from .routers import links, redirect
 from .utils import err
-
-# Config (env-overridable)
-BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
-DB_PATH = Path(os.getenv("DB_PATH", str(DEFAULT_DB_PATH)))
 
 # Templates (absolute path, so it works regardless of CWD)
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -22,8 +17,13 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 def create_app() -> FastAPI:
+    """
+    Factory that builds and returns the FastAPI app instance.
+    Tests import and call this; production uses the global 'app' below.
+    """
     app = FastAPI(title="TinyLink+")
 
+    # --- Error handlers (uniform JSON envelope + no-cache headers) ---
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         return JSONResponse(
@@ -35,11 +35,9 @@ def create_app() -> FastAPI:
                 "Expires": "0",
             },
         )
-    
+
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
-        # If your endpoints already build the standard envelope with `err(...)`,
-        # keep it. If not, wrap whatever came in.
         content = exc.detail if isinstance(exc.detail, dict) else err("HTTP_ERROR", str(exc.detail))
         return JSONResponse(
             status_code=exc.status_code,
@@ -51,29 +49,25 @@ def create_app() -> FastAPI:
             },
         )
 
+    # --- DB schema (resolves APP_DB_PATH or defaults to app.db internally) ---
+    init_db()
 
-    # Ensure DB schema is ready (links table + index)
-    init_db(DB_PATH)
-
-    # Mount API routers per HLD/LLD
-    # /api/links[...]  (CRUD + QR)
+    # --- Routers ---
     app.include_router(links.router, prefix="/api/links", tags=["links"])
-    # /{code}          (redirect 302 + expiry/analytics)
-    app.include_router(redirect.router, tags=["redirect"])
+    app.include_router(redirect.router, tags=["redirect"])  # /{code}
 
-    # Healthcheck (kept from your previous file)
+    # --- Health & UI ---
     @app.get("/health")
     def health():
         return {"status": "ok"}
 
-    # Minimal UI (kept from your previous file)
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request):
-        # You can pass extra context if needed
         return templates.TemplateResponse("index.html", {"request": request, "msg": "TinyLink+ Ready"})
 
+    # >>> THIS MUST BE HERE <<<
     return app
 
 
-# ASGI entrypoint for uvicorn
+# ASGI entrypoint for uvicorn (e.g., uvicorn app.main:app --reload)
 app = create_app()

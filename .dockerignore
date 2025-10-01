@@ -1,0 +1,15 @@
+# Don’t send these to the Docker build context
+.venv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.git
+.gitignore
+pytest.ini
+.pytest_cache/
+tests/
+app.db
+.env
+.DS_Store
