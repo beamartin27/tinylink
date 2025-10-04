@@ -96,7 +96,6 @@
   .iconbtn.del   { background:#2a1517; border-color:#3b1f22; }
   .iconbtn svg { width:18px; height:18px; }
 
-  /* === ADD THIS CSS HERE === */
   /* Required field indicators */
   input:required {
     border-left: 3px solid var(--accent);
@@ -105,7 +104,6 @@
   input:invalid {
     border-color: var(--err);
   }
-  /* ========================= */
 
 
   </style>
@@ -196,12 +194,12 @@ function isActive(exp){
   return !isNaN(d) && d > new Date();
 }
 
-// FIXED: Helper function to check if expired for display purposes
+// Helper function to check if expired for display purposes
 function isExpired(exp) {
   return !isActive(exp);
 }
 
-// FIXED: Helper function to get proper status text and class
+// Helper function to get proper status text and class
 function getExpiryStatus(expiresAt) {
   if (!expiresAt) {
     return { status: 'Active', class: 'ok', expired: false };
