@@ -1,477 +1,125 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8"/>
-  <title>TinyLink+</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <link rel="icon" href="data:,">
-  <style>
-  :root {
-    --bg:#0b0c10; --panel:#13151a; --muted:#8b93a7; --text:#e6e9ef; --accent:#6aa9ff;
-    --ok:#23d18b; --warn:#ffcc00; --err:#ff6b6b; --border:#22262e;
-    --btn-on:#173a2b; --btn-on-border:#1e7a57; --btn-off:#3a1717; --btn-off-border:#7a1f1f;
-  }
-  html,body { background:var(--bg); color:var(--text); }
-  body { font-family: Inter, system-ui, Arial, sans-serif; margin: 2rem; }
-  header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
-  h1 { font-size: 1.6rem; margin: 0; }
-  a.muted-link { color: var(--muted); text-decoration: none; }
-  a.muted-link:hover { color: var(--text); text-decoration: underline; }
+  <head>
+    <meta charset="utf-8" />
+    <title>TinyLink+</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <!-- avoid extra request from browser for external icon file -->
+    <link rel="stylesheet" href="/static/css/index.css" />
+  </head>
+  <!-- Body: The document's visible content -->
+  <body>
+    <header>
+      <h1>TinyLink+</h1>
+      <a class="muted-link" href="/docs" target="_blank">API Docs →</a>
+    </header>
 
-  .row { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin-bottom:.25rem; }
-  .wide { flex:1; min-width:280px; }
-  input, button { padding:.6rem .8rem; border-radius:.6rem; border:1px solid var(--border); background:var(--panel); color:var(--text); }
-  input:focus { outline:2px solid var(--accent); }
-  button { cursor:pointer; }
-  button.primary { background:linear-gradient(180deg, #2a6cff, #1b4ed8); border-color:#1b4ed8; }
-  button.ghost { background:transparent; border-color:var(--border); }
-  button.danger { border-color:#7a1f1f; background:#2a1212; }
-  #status { margin-left:.5rem; }
-  .editing-banner { display:none; padding:.5rem .75rem; border:1px solid #1e7a57; background:#0f2d23; border-radius:.6rem; margin:.5rem 0; }
-  .editing .editing-banner { display:block; }
-  .editing input#url, .editing input#exp { outline:2px solid var(--accent); box-shadow:0 0 0 3px rgba(106,169,255,.2); }
+    <!-- div: global transient UI containers -->
+    <div
+      id="toast"
+      class="toast"
+      role="status"
+      aria-live="polite"
+      style="display: none"
+    ></div>
+    <div id="errorbar" class="errorbar" style="display: none"></div>
 
-  table { width:100%; border-collapse:separate; border-spacing:0; margin-top:1rem; font-size: 0.92rem; }
-  th, td { padding:.6rem; border-bottom:1px solid var(--border); vertical-align:top; }
-  th { text-align:left; color:var(--muted); font-weight:600; }
-  td a { color:var(--accent); text-decoration:none; }
-
-  /* wrap long targets and constrain column width */
-  .cell-target { max-width: 48vw; white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
-
-  .badge { padding:.2rem .5rem; border-radius:.5rem; font-size:.8rem; border:1px solid transparent; }
-  .badge.ok { background:#113b2d; color:#7af0c1; border-color:#1e7a57; }
-  .badge.exp { background:#3b2b11; color:#ffd480; border-color:#7a5d1e; }
-  .muted { color:var(--muted); font-size:.9rem; }
-
-  .qr { width:44px; height:44px; border-radius:.4rem; border:1px solid var(--border); background:#fff; cursor:pointer; }
-
-  .toast { position:fixed; top:16px; right:16px; background:#1b1f27; border:1px solid var(--border);
-           padding:.75rem 1rem; border-radius:.6rem; box-shadow:0 4px 16px rgba(0,0,0,.4); display:none; z-index:9999; }
-  .errorbar { display:none; background:#291416; border:1px solid #5a1e25; color:#ffb3b8; padding:.6rem .8rem; border-radius:.6rem; margin-bottom:.5rem; white-space:pre-wrap; }
-  .auto-btn.on { background: var(--btn-on); border-color: var(--btn-on-border); }
-  .auto-btn.off { background: var(--btn-off); border-color: var(--btn-off-border); }
-
-  /* Simple modal */
-  dialog { border:none; border-radius:.8rem; padding:0; overflow:hidden; }
-  .modal { background:#12141a; color:var(--text); min-width: min(90vw, 640px); border:1px solid var(--border); }
-  .modal header { padding:.75rem 1rem; border-bottom:1px solid var(--border); }
-  .modal main { padding:1rem; }
-  .modal pre { background:#0e1015; border:1px solid var(--border); padding:.75rem; border-radius:.6rem; overflow:auto; max-height:60vh; }
-  .modal footer { padding:.75rem 1rem; border-top:1px solid var(--border); text-align:right; }
-
-  /* Table sizing & wrapping */
-  table { font-size: 0.95rem; }              /* a bit smaller */
-  td, th { line-height: 1.25; }
-  td:nth-child(2) { white-space: normal; }    /* target column wraps nicely */
-
-  /* Status/Expires stacked */
-  .status {
-    display: flex;
-    flex-direction: column;
-    gap: .15rem;
-  }
-  .small { font-size: .85rem; color: var(--muted); }
-
-  /* Actions as uniform icon buttons */
-  .actions { display:flex; gap:.4rem; }
-  .iconbtn {
-    display:inline-flex; align-items:center; justify-content:center;
-    width: 36px; height: 36px; border-radius:.6rem;
-    border:1px solid var(--border); background:var(--panel);
-    transition: transform .08s ease, background .12s ease, border-color .12s ease;
-  }
-  .iconbtn:hover { transform: translateY(-1px); }
-  .iconbtn:active { transform: translateY(0); }
-
-  /* Semantic variants */
-  .iconbtn.view  { background:#18202a; border-color:#233040; }
-  .iconbtn.edit  { background:#1a202c; border-color:#2a3342; }
-  .iconbtn.del   { background:#2a1517; border-color:#3b1f22; }
-  .iconbtn svg { width:18px; height:18px; }
-
-  /* Semantic variants */
-  .iconbtn.view  { background:#18202a; border-color:#233040; }
-  .iconbtn.edit  { background:#1a202c; border-color:#2a3342; }
-  .iconbtn.del   { background:#2a1517; border-color:#3b1f22; }
-  .iconbtn svg { width:18px; height:18px; }
-
-  /* Required field indicators */
-  input:required {
-    border-left: 3px solid var(--accent);
-  }
-
-  input:invalid {
-    border-color: var(--err);
-  }
-
-
-  </style>
-</head>
-<body>
-  <header>
-    <h1>TinyLink+</h1>
-    <a class="muted-link" href="/docs" target="_blank">API Docs →</a>
-  </header>
-
-  <div id="errorbar" class="errorbar"></div>
-  <div id="toast" class="toast"></div>
-
-  <div id="formWrap">
-    <div class="row">
-      <input id="url" class="wide" type="url" placeholder="https://example.com" required/>
-      <input id="exp" type="datetime-local" required />
-      <button id="createBtn" class="primary" onclick="createLink()">Create</button>
-      <button id="saveBtn" onclick="saveLink()" style="display:none">Save</button>
-      <button class="ghost" onclick="fetchLinks()">Refresh</button>
-      <button id="autoBtn" class="ghost auto-btn off" onclick="toggleAutoRefresh()">Auto-refresh</button>
-      <button id="cancelBtn" class="ghost" onclick="cancelEdit()" style="display:none">Cancel</button>
-      <span id="status" class="muted"></span>
+    <!-- Used by JS (enterEditing, exitEditing) to add/remove an editing class which triggers CSS visuals -->
+    <div id="formWrap">
+      <!-- flex row container (layout only). -->
+      <div class="row">
+        <input
+          id="url"
+          class="wide"
+          type="url"
+          placeholder="https://example.com"
+          required
+        />
+        <!-- browser widget for picking local date+time (no timezone). JS converts to/from ISO UTC with helper functions -->
+        <input id="exp" type="datetime-local" required />
+        <!-- Buttons trigger JS actions for PUT, LIST...-->
+        <button id="createBtn" class="primary" onclick="createLink()">
+          Create
+        </button>
+        <button id="saveBtn" onclick="saveLink()" style="display: none">
+          Save
+        </button>
+        <button class="ghost" onclick="fetchLinks()">Refresh</button>
+        <button
+          id="autoBtn"
+          class="ghost auto-btn off"
+          onclick="toggleAutoRefresh()"
+        >
+          Auto-refresh
+        </button>
+        <button
+          id="cancelBtn"
+          class="ghost"
+          onclick="cancelEdit()"
+          style="display: none"
+        >
+          Cancel
+        </button>
+        <span id="status" class="muted"></span>
+      </div>
+      <div id="editingBanner" class="editing-banner">
+        Editing <code id="editingCodeLabel"></code>. Click
+        <strong>Save</strong> to confirm or <strong>Cancel</strong> to discard.
+      </div>
     </div>
-    <div id="editingBanner" class="editing-banner">Editing <code id="editingCodeLabel"></code>. Click <b>Save</b> to confirm or <b>Cancel</b> to discard.</div>
-  </div>
 
-  <table id="tbl">
-    <thead>
-      <tr>
-        <th>Short</th>
-        <th>Target</th>
-        <th>Created</th>
-        <th>Clicks</th>
-        <th>Status / Expires</th>
-        <th>QR</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <!-- shows the list of links -->
+    <table id="tbl">
+      <!-- able header; holds column headings (one per <th>) -->
+      <thead>
+        <tr>
+          <th>Short</th>
+          <th>Target</th>
+          <th>Created</th>
+          <th>Clicks</th>
+          <th>Status / Expires</th>
+          <th>QR</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <!-- body of the table. JS empties and fills the <tbody> dynamically -->
+      <tbody></tbody>
+    </table>
 
-  <!-- Details Modal -->
-  <dialog id="detailDlg">
-    <div class="modal">
-      <header><h3 style="margin:0">Link details</h3></header>
-      <main><pre id="detailPre"></pre></main>
-      <footer><button class="ghost" onclick="closeDetail()">Close</button></footer>
-    </div>
-  </dialog>
+    <!-- Details Modal -->
+    <dialog id="detailDlg">
+      <div class="modal">
+        <header><h3 style="margin: 0">Link details</h3></header>
+        <main><pre id="detailPre"></pre></main>
+        <footer>
+          <button class="ghost" onclick="closeDetail()">Close</button>
+        </footer>
+      </div>
+    </dialog>
 
-  <!-- QR Modal -->
-  <dialog id="qrDlg">
-    <div class="modal">
-      <header><h3 style="margin:0">QR Code</h3></header>
-      <main><img id="qrImgLarge" alt="QR" style="background:#fff; border-radius:.5rem; max-width:80vw; height:auto"/></main>
-      <footer><button class="ghost" onclick="closeQR()">Close</button></footer>
-    </div>
-  </dialog>
+    <!-- QR Modal -->
+    <dialog id="qrDlg">
+      <div class="modal">
+        <header><h3 style="margin: 0">QR Code</h3></header>
+        <main>
+          <img
+            id="qrImgLarge"
+            alt="QR"
+            style="
+              background: #fff;
+              border-radius: 0.5rem;
+              max-width: 80vw;
+              height: auto;
+            "
+          />
+        </main>
+        <footer>
+          <button class="ghost" onclick="closeQR()">Close</button>
+        </footer>
+      </div>
+    </dialog>
 
-<script>
-const BASE = location.origin;
-let editingCode = null;
-let auto = false, iv = null;
-
-// ---------- Utilities ----------
-function setStatus(msg) { document.getElementById("status").textContent = msg || ""; }
-function showToast(msg) { const t = document.getElementById("toast"); t.textContent = msg; t.style.display="block"; setTimeout(()=>t.style.display="none",1800); }
-function showError(obj) {
-  const e = document.getElementById("errorbar");
-  if (!obj) { e.style.display="none"; e.textContent=""; return; }
-  e.style.display="block";
-  if (obj.error) { e.textContent = obj.error.message || JSON.stringify(obj.error, null, 2); }
-  else { e.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2); }
-}
-async function readError(res){
-  try { return await res.json(); }
-  catch { return { error: { message: await res.text() || "Unknown error" } }; }
-}
-async function copyText(text) { try { await navigator.clipboard.writeText(text); showToast("Copied!"); } catch { showToast("Copy failed"); } }
-function fmtNullable(val) { if (!val) return ""; try { const d=new Date(val); if(!isNaN(d)) return d.toLocaleString(); } catch{} return String(val); }
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function escapeAttr(s){ return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-
-function isActive(exp){ 
-  if(!exp) return true; 
-  const d = new Date(exp);
-  return !isNaN(d) && d > new Date();
-}
-
-// Helper function to check if expired for display purposes
-function isExpired(exp) {
-  return !isActive(exp);
-}
-
-// Helper function to get proper status text and class
-function getExpiryStatus(expiresAt) {
-  if (!expiresAt) {
-    return { status: 'Active', class: 'ok', expired: false };
-  }
-  
-  const d = new Date(expiresAt);
-  if (isNaN(d)) {
-    return { status: 'Active', class: 'ok', expired: false };
-  }
-  
-  const expired = isExpired(expiresAt);
-  return {
-    status: expired ? 'Expired' : 'Active',
-    class: expired ? 'exp' : 'ok',
-    expired: expired
-  };
-}
-
-// ---------- Auto-refresh ----------
-function toggleAutoRefresh(){
-  auto = !auto;
-  const btn = document.getElementById("autoBtn");
-  btn.classList.toggle("on", auto);
-  btn.classList.toggle("off", !auto);
-  if (auto) { fetchLinks(); iv=setInterval(fetchLinks, 5000); showToast("Auto-refresh ON"); }
-  else { clearInterval(iv); showToast("Auto-refresh OFF"); }
-}
-
-// ---------- Editing UX ----------
-function enterEditing(code){
-  editingCode = code;
-  document.getElementById("formWrap").classList.add("editing");
-  document.getElementById("editingBanner").style.display = "block";
-  document.getElementById("editingCodeLabel").textContent = code;
-  document.getElementById("createBtn").style.display="none";
-  document.getElementById("saveBtn").style.display="inline-block";
-  document.getElementById("cancelBtn").style.display="inline-block";
-}
-function exitEditing(){
-  editingCode = null;
-  document.getElementById("formWrap").classList.remove("editing");
-  document.getElementById("editingBanner").style.display = "none";
-  document.getElementById("editingCodeLabel").textContent = "";
-  document.getElementById("createBtn").style.display="inline-block";
-  document.getElementById("saveBtn").style.display="none";
-  document.getElementById("cancelBtn").style.display="none";
-  setStatus("");
-}
-function cancelEdit(){
-  document.querySelector("#url").value = "";
-  document.querySelector("#exp").value = "";
-  exitEditing();
-}
-
-// ---------- Fetch & Render ----------
-async function fetchLinks() {
-  showError(null);
-  setStatus("Loading...");
-  const res = await fetch(`${BASE}/api/links`);
-  if (!res.ok) { showError(await readError(res)); setStatus(""); return; }
-  const data = await res.json();
-  const tbody = document.querySelector("#tbl tbody");
-  tbody.innerHTML = "";
-  for (const r of data) {
-    const active = isActive(r.expires_at);
-    const statusInfo = getExpiryStatus(r.expires_at);
-    const statusHtml = `
-    <div class="status">
-      <span class="badge ${statusInfo.class}">
-        ${statusInfo.status}
-      </span>
-      <div class="small">${r.expires_at ? fmtExpiryShort(r.expires_at) : ''}</div>
-    </div>`;
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>
-        <a href="${r.short_url}?t=${Date.now()}" target="_blank">${r.short_url}</a>
-        <button class="iconbtn" title="Copy" onclick="copyText('${r.short_url}')" aria-label="Copy">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"/></svg>
-        </button>
-      </td>
-
-      <td class="cell-target" title="${r.target_url}">${escapeHtml(r.target_url)}</td>
-      <td>${fmtNullable(r.created_at)}</td>
-      <td>${r.click_count ?? 0}</td>
-      <td>${statusHtml}</td>
-      <td><img class="qr" src="${BASE}/api/links/${r.short_code}/qr" alt="QR" onclick="openQR('${r.short_code}')"/></td>
-      <td class="actions">
-        <!-- view -->
-        <button class="iconbtn view" title="View details" onclick="viewLink('${r.short_code}')" aria-label="View">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/></svg>
-        </button>
-        <!-- edit -->
-        <button class="iconbtn edit" title="Edit" onclick="editLink('${r.short_code}','${escapeAttr(r.target_url)}','${r.expires_at ?? ''}')" aria-label="Edit">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25Zm2.92 2.83H5v-.92l8.06-8.06.92.92-8.06 8.06ZM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/></svg>
-        </button>
-        <!-- delete -->
-        <button class="iconbtn del" title="Delete" onclick="delLink('${r.short_code}')" aria-label="Delete">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6a1 1 0 0 1 1 1v1h4v2H4V5h4V4a1 1 0 0 1 1-1Zm-2 6h10l-1 11a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2L7 9Z"/></svg>
-        </button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  }
-  setStatus(`Loaded ${data.length} link(s).`);
-}
-
-// ---------- Create ----------
-async function createLink() {
-  showError(null);
-  const url = document.querySelector("#url").value.trim();
-  const raw = document.querySelector("#exp").value.trim();
-
-  // Validate required fields
-  if (!url) {
-    showError("Please enter a URL");
-    return;
-  }
-  
-  if (!raw) {
-    showError("Please select both date and time");
-    return;
-  }
-
-  const body = { target_url: url };
-  
-  // Parse and validate datetime
-  const d = parseDateTimeLocal(raw);
-  if (!d) {
-    showError("Please select a valid date and time");
-    return;
-  }
-  body.expires_at = d.toISOString();
-
-  const res = await fetch(`${BASE}/api/links`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) { showError(await readError(res)); return; }
-
-  document.querySelector("#url").value = "";
-  document.querySelector("#exp").value = "";
-  fetchLinks();
-  showToast("Link created!");
-}
-
-
-// ---------- Edit / Save (UPDATE) ----------
-function editLink(code, url, exp) {
-  document.querySelector("#url").value = url;
-  document.querySelector("#exp").value = isoToLocalInput(exp);
-  enterEditing(code);
-  setStatus(`Editing ${code}...`);
-}
-async function saveLink() {
-  if (!editingCode) return;
-  showError(null);
-
-  const url = document.querySelector("#url").value.trim();
-  const raw = document.querySelector("#exp").value.trim();
-
-  const body = {};
-  if (url) body.target_url = url;
-
-  // Require both fields during edit
-  if (!url || !raw) {
-    showError("Both URL and expiration date/time are required");
-    return;
-  }
-
-  const d = parseDateTimeLocal(raw);
-  if (!d) {
-    showError("Please select a valid date and time");
-    return;
-  }
-  body.expires_at = d.toISOString();
-
-  const res = await fetch(`${BASE}/api/links/${editingCode}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) { showError(await readError(res)); return; }
-
-  cancelEdit();
-  showToast("Saved");
-  fetchLinks();
-}
-
-// Parse a datetime-local value (YYYY-MM-DDTHH:MM) -> Date (local) or null
-function parseDateTimeLocal(s) {
-  if (!s) return null;
-  // Must have both date and time in the correct format
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)) return null;
-  const d = new Date(s);
-  return isNaN(d) ? null : d;
-}
-
-
-// ---------- Delete ----------
-async function delLink(code) {
-  if (!confirm(`Delete ${code}?`)) return;
-  const res = await fetch(`${BASE}/api/links/${code}`, { method:"DELETE" });
-  if (!res.ok) { showError(await readError(res)); return; }
-  showToast("Deleted");
-  fetchLinks();
-}
-
-// ---------- View detail (modal) ----------
-async function viewLink(code) {
-  const res = await fetch(`${BASE}/api/links/${code}`);
-  const data = await res.json();
-  document.getElementById("detailPre").textContent = JSON.stringify(data, null, 2);
-  document.getElementById("detailDlg").showModal();
-}
-function closeDetail(){ document.getElementById("detailDlg").close(); }
-
-// ---------- QR large modal ----------
-function openQR(code) {
-  const img = document.getElementById("qrImgLarge");
-  img.src = `${BASE}/api/links/${code}/qr`;
-  document.getElementById("qrDlg").showModal();
-}
-function closeQR(){ document.getElementById("qrDlg").close(); }
-
-// Convert ISO (UTC) -> value for <input type="datetime-local"> (local time)
-function isoToLocalInput(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d)) return "";
-  const pad = n => String(n).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  const mm = pad(d.getMonth() + 1);
-  const dd = pad(d.getDate());
-  const hh = pad(d.getHours());
-  const ii = pad(d.getMinutes());
-  return `${yyyy}-${mm}-${dd}T${hh}:${ii}`;
-}
-
-
-// Convert datetime-local (interpreted as local) back to ISO UTC
-function localInputToIso(s) {
-  if (!s) return null;
-  const d = new Date(s);           // parsed as local
-  return d.toISOString();          // convert to UTC ISO
-}
-
-function fmtExpiryShort(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d)) return String(iso);
-  // dd/mm/yyyy, hh:mm (24h)
-  const dd = String(d.getDate()).padStart(2,'0');
-  const mm = String(d.getMonth()+1).padStart(2,'0');
-  const yyyy = d.getFullYear();
-  const hh = String(d.getHours()).padStart(2,'0');
-  const ii = String(d.getMinutes()).padStart(2,'0');
-  return `${dd}/${mm}/${yyyy}, ${hh}:${ii}`;
-}
-
-// Listen for date input changes and set default time if needed
-document.getElementById("exp").addEventListener("change", function(e) {
-  const value = e.target.value;
-  // If only date is selected (no time), default to end of day
-  if (value && !value.includes('T')) {
-    e.target.value = value + 'T23:59';
-  }
-});
-
-// Auto-load on page open
-fetchLinks();
-</script>
-</body>
+    <script src="/static/js/index.js"></script>
+  </body>
 </html>

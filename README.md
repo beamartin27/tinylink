@@ -37,6 +37,7 @@ Includes a tiny UI (Jinja/HTML) and a REST API with CRUD, redirect, and QR gener
 Install everything from `requirements.txt`.
 
 **Additional prerequisite** (for public testing of QR):
+
 - **ngrok** — to expose your local server with a public HTTPS URL.
   - Download from [ngrok.com](https://ngrok.com) and install
   - Run once: `ngrok config add-authtoken <YOUR_TOKEN>`
@@ -57,8 +58,13 @@ tinylink/
 │  ├─ services/
 │  │  ├─ codes.py          # short code generator (collision-safe)
 │  │  └─ qrcodes.py        # QR PNG generator
+|  ├─ static
+|  |  ├─ css/
+|  |  |  └─ index.css      # styling for frontend
+|  |  └─ js
+|  |     └─ index.js       # frontend logic
 │  ├─ templates/
-│  │  └─ index.html        # minimal UI (dark mode)
+│  │  └─ index.html        # minimal UI (html)
 │  └─ utils.py             # error envelope helper
 ├─ docs/
 │  ├─ HLD.md               # high-level design
@@ -138,11 +144,13 @@ docker build -t tinylink:latest .
 Run the container and persist the DB on your host:
 
 **PowerShell (Windows)**:
+
 ```powershell
 docker run --rm -p 8000:8000 -v "$PWD/app.db:/app/app.db" tinylink:latest
 ```
 
 **Git Bash / WSL / macOS / Linux**:
+
 ```bash
 docker run --rm -p 8000:8000 -v "$PWD/app.db:/app/app.db" tinylink:latest
 ```
@@ -156,6 +164,7 @@ ngrok http 8000
 Open the ngrok Forwarding URL.
 
 **Environment variables** (optional):
+
 - `DB_PATH` — override the DB location (default: `/app/app.db`)
 
 ```bash

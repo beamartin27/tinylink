@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 
 # Internal modules per HLD/LLD
@@ -68,7 +69,15 @@ def create_app() -> FastAPI:
     def home(request: Request):
         return templates.TemplateResponse("index.html", {"request": request, "msg": "TinyLink+ Ready"})
 
-    # >>> THIS MUST BE HERE <<<
+    # Serve static assets (CSS, JS, images) from the `app/static` folder at /static
+    static_dir = Path(__file__).resolve().parent / "static"
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    else:
+        # If the static folder doesn't exist for some reason, we skip mounting to avoid a crash
+        # This keeps tests and environments without a static folder working.
+        pass
+
     return app
 
 

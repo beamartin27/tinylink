@@ -1,0 +1,287 @@
+:root {
+  --bg: #0b0c10;
+  --panel: #13151a;
+  --muted: #8b93a7;
+  --text: #e6e9ef;
+  --accent: #6aa9ff;
+  --ok: #23d18b;
+  --warn: #ffcc00;
+  --err: #ff6b6b;
+  --border: #22262e;
+  --btn-on: #173a2b;
+  --btn-on-border: #1e7a57;
+  --btn-off: #3a1717;
+  --btn-off-border: #7a1f1f;
+} /* declare global css custom properties, they’re values you can reuse elsewhere in your CSS with the var() function.*/
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+} /* Apply style to both html and body*/
+body {
+  font-family: Inter, system-ui, Arial, sans-serif;
+  margin: 2rem;
+} /* Apply the style only to the body */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+h1 {
+  font-size: 1.6rem;
+  margin: 0;
+}
+a.muted-link {
+  color: var(--muted);
+  text-decoration: none;
+} /* Target <a> elements with class muted-link */
+a.muted-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+} /* Pseudo class that activates when the user hovers the pointer over the link */
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.25rem;
+} /* targets elements that have that class name in their class attribute */
+.wide {
+  flex: 1;
+  min-width: 280px;
+}
+input,
+button {
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+input:focus {
+  outline: 2px solid var(--accent);
+} /* focus is for when the user clicked into an input element */
+button {
+  cursor: pointer;
+}
+button.primary {
+  background: linear-gradient(180deg, #2a6cff, #1b4ed8);
+  border-color: #1b4ed8;
+}
+button.ghost {
+  background: transparent;
+  border-color: var(--border);
+}
+button.danger {
+  border-color: #7a1f1f;
+  background: #2a1212;
+}
+#status {
+  margin-left: 0.5rem;
+} /* elements with id="status" (a single unique element) */
+.editing-banner {
+  display: none;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #1e7a57;
+  background: #0f2d23;
+  border-radius: 0.6rem;
+  margin: 0.5rem 0;
+}
+.editing .editing-banner {
+  display: block;
+}
+.editing input#url,
+.editing input#exp {
+  outline: 2px solid var(--accent);
+  box-shadow: 0 0 0 3px rgba(106, 169, 255, 0.2);
+} /* Target input with id="url" and id="exp" when inside class="editing"*/
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 1rem;
+  font-size: 0.95rem; /* adjusted merged value */
+}
+th,
+td {
+  padding: 0.6rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  line-height: 1.25;
+} /* Target table header and table cell */
+th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+}
+td a {
+  color: var(--accent);
+  text-decoration: none;
+} /* Target anchor elements inside a <td> cell */
+
+/* wrap long targets and constrain column width */
+.cell-target {
+  max-width: 48vw;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  border: 1px solid transparent;
+} /* A "badge" is a small UI element that displays a short status or label (like "Active", "Expired", counts, or small flags). */
+.badge.ok {
+  background: #113b2d;
+  color: #7af0c1;
+  border-color: #1e7a57;
+}
+.badge.exp {
+  background: #3b2b11;
+  color: #ffd480;
+  border-color: #7a5d1e;
+}
+.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.qr {
+  width: 44px;
+  height: 44px;
+  border-radius: 0.4rem;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+}
+
+.toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background: #1b1f27;
+  border: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  border-radius: 0.6rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  display: none;
+  z-index: 9999;
+} /* A "toast" is a transient, non-modal message that appears briefly (often in a corner) to confirm an action (e.g., "Copied!", "Saved"). */
+.errorbar {
+  display: none;
+  background: #291416;
+  border: 1px solid #5a1e25;
+  color: #ffb3b8;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.6rem;
+  margin-bottom: 0.5rem;
+  white-space: pre-wrap;
+}
+.auto-btn.on {
+  background: var(--btn-on);
+  border-color: var(--btn-on-border);
+}
+.auto-btn.off {
+  background: var(--btn-off);
+  border-color: var(--btn-off-border);
+}
+
+/* Simple modal */
+dialog {
+  border: none;
+  border-radius: 0.8rem;
+  padding: 0;
+  overflow: hidden;
+}
+.modal {
+  background: #12141a;
+  color: var(--text);
+  min-width: min(90vw, 640px);
+  border: 1px solid var(--border);
+} /* UI overlay (typically centered) that appears above the page to show details or gather input. Prevents interaction with page behind it.*/
+.modal header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.modal main {
+  padding: 1rem;
+}
+.modal pre {
+  background: #0e1015;
+  border: 1px solid var(--border);
+  padding: 0.75rem;
+  border-radius: 0.6rem;
+  overflow: auto;
+  max-height: 60vh;
+}
+.modal footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  text-align: right;
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+} /* Status/Expires stacked */
+.small {
+  font-size: 0.85rem;
+  color: var(--muted);
+} /* A utility class for small, muted text (e.g., expiry date string). */
+
+/* Actions as uniform icon buttons */
+.actions {
+  display: flex;
+  gap: 0.4rem;
+} /* Container for action buttons (view/edit/delete) */
+.iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  transition: transform 0.08s ease, background 0.12s ease,
+    border-color 0.12s ease;
+}
+.iconbtn:hover {
+  transform: translateY(-1px);
+}
+.iconbtn:active {
+  transform: translateY(0);
+}
+
+/* Semantic variants for icons */
+.iconbtn.view {
+  background: #18202a;
+  border-color: #233040;
+}
+.iconbtn.edit {
+  background: #1a202c;
+  border-color: #2a3342;
+}
+.iconbtn.del {
+  background: #2a1517;
+  border-color: #3b1f22;
+}
+.iconbtn svg {
+  width: 18px;
+  height: 18px;
+} /* argets the SVG icon inside the button to set width/height. */
+
+/* Required field indicators */
+input:required {
+  border-left: 3px solid var(--accent);
+}
+
+input:invalid {
+  border-color: var(--err);
+}
