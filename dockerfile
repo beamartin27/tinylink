@@ -18,7 +18,7 @@ COPY requirements.txt /app/requirements.txt
 
 # Install Python deps
 RUN python -m pip install --upgrade pip && \
-    pip install -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code
 COPY app /app/app
@@ -26,6 +26,10 @@ COPY README.md /app/README.md
 
 # Expose port for uvicorn
 EXPOSE 8000
+
+# Run as non-root for security
+RUN useradd -m appuser
+USER appuser
 
 # Default envs (overridable at docker run)
 # BASE_URL is optional; set it only when tunneling/public domain is known.
