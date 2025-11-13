@@ -12,10 +12,24 @@ from .db import init_db
 from .routers import links, redirect
 from .utils import err
 
+# NEW: settings + metrics + repo DI (repo not used by routers yet; that’s Step 3)
+from .settings import get_settings
+from .metrics import MetricsMiddleware, metrics_endpoint
+from .repositories.sqlite import SqliteLinkRepository  # used by DI provider later
+
 # Templates (absolute path, so it works regardless of CWD)
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"  
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR)) # This renders index.html with a context (a dict of variables your template can use).
 
+def get_repo():
+    """
+    Dependency provider for the data repository.
+    Not used by routers yet; in Step 3 we’ll inject it with Depends().
+    """
+    settings = get_settings() # read configuration to avoid hard coding
+    repo = SqliteLinkRepository(settings.db_path)
+    repo.init_schema()
+    return repo
 
 def create_app() -> FastAPI:
     """
@@ -23,6 +37,16 @@ def create_app() -> FastAPI:
     Tests import and call this; production uses the global 'app' below.
     """
     app = FastAPI(title="TinyLink+")
+
+    settings = get_settings()
+
+    # --- Metrics (/metrics) ---
+    if settings.enable_metrics:
+        app.add_middleware(MetricsMiddleware)
+
+        @app.get("/metrics")
+        def _metrics():
+            return metrics_endpoint()
 
     # --- Error handlers (uniform JSON envelope + no-cache headers) ---
     # @app are decorators that register a function as the handler for a given exception type.
@@ -53,6 +77,7 @@ def create_app() -> FastAPI:
         )
 
     # --- DB schema (resolves APP_DB_PATH or defaults to app.db internally) ---
+    # This keeps A1 behavior working until routers are refactored to DI.
     init_db()
 
     # --- Routers (A method on the FastAPI app that mounts an APIRouter) ---
