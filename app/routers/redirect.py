@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException
 from starlette.responses import RedirectResponse
 from datetime import datetime, timezone
 from .. import db

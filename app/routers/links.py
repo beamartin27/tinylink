@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Response, Request
 from typing import List, Any
-from datetime import datetime, timezone
+from datetime import datetime
 from ..models import LinkCreate, LinkUpdate, LinkOut
 from .. import db
 from ..services.qrcodes import make_qr_png
@@ -16,10 +16,14 @@ BASE_URL = os.getenv("BASE_URL", "http://localhost:8000") # Optional base URL fo
 def _to_link_out(rec: dict, base: str) -> LinkOut: # The rec parameter comes from the db queries that return dictionaries representing database rows
     short_url = f"{base}/{rec['short_code']}" # Build the public short URL from the base (scheme + host + port) plus the code.
     def parse_dt(x):
-        if not x: return None
-        if isinstance(x, datetime): return x
-        try: return datetime.fromisoformat(x)
-        except Exception: return None
+        if not x: 
+            return None
+        if isinstance(x, datetime): 
+            return x
+        try: 
+            return datetime.fromisoformat(x)
+        except Exception: 
+            return None
 
     return LinkOut( # Same structure as links table
         short_code=rec["short_code"],
@@ -88,5 +92,4 @@ def qr_png(code: str, request: Request):
 
 @router.get("/__debug_raw/{code}") # GET /api/links/__debug_raw/{code} → returns the raw DB dict (no shaping).
 def debug_raw(code: str):
-    rec = db.get_by_code(code)
-    return  # Useful during development
+    return db.get_by_code(code)

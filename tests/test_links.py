@@ -1,12 +1,11 @@
 # tests/test_links.py
-import os, tempfile, json, shutil
+import os
+import tempfile
 from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
 # Importa la app y el db del paquete
-from app.main import create_app
-import app.db as db
 from app.services import codes
 
 def norm(u: str) -> str: # "https://example.com" and "https://example.com/" compare equal in assertions.
