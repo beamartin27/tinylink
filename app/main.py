@@ -11,12 +11,10 @@ from fastapi.exceptions import RequestValidationError
 from .db import init_db
 from .routers import links, redirect
 from .utils import err
-from .services.link_service import LinkService
 
 # NEW: settings + metrics + repo DI (repo not used by routers yet; that’s Step 3)
 from .settings import get_settings
 from .metrics import MetricsMiddleware, metrics_endpoint
-from .repositories.sqlite import SqliteLinkRepository  # used by DI provider later
 
 # Templates (absolute path, so it works regardless of CWD)
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"  
