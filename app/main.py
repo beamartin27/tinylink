@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from .db import init_db
 from .routers import links, redirect
 from .utils import err
+from .services.link_service import LinkService
 
 # NEW: settings + metrics + repo DI (repo not used by routers yet; that’s Step 3)
 from .settings import get_settings
@@ -20,16 +21,6 @@ from .repositories.sqlite import SqliteLinkRepository  # used by DI provider lat
 # Templates (absolute path, so it works regardless of CWD)
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"  
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR)) # This renders index.html with a context (a dict of variables your template can use).
-
-def get_repo():
-    """
-    Dependency provider for the data repository.
-    Not used by routers yet; in Step 3 we’ll inject it with Depends().
-    """
-    settings = get_settings() # read configuration to avoid hard coding
-    repo = SqliteLinkRepository(settings.db_path)
-    repo.init_schema()
-    return repo
 
 def create_app() -> FastAPI:
     """

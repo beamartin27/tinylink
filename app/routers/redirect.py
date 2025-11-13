@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from starlette.responses import RedirectResponse
 from ..services.link_service import LinkService
-from ..main import get_service
+from ..deps import get_service
 from ..utils import err
 
 router = APIRouter() # instance of the router

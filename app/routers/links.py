@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, Depends
 from ..models import LinkCreate, LinkUpdate, LinkOut
 from ..utils import err
 from ..services.link_service import LinkService, _NOCHANGE # special sentinel object meaning “don’t modify this field” (distinct from None, which might mean “explicitly clear”).
-from ..main import get_service
+from ..deps import get_service
 from ..services.qrcodes import make_qr_png  # same as before
 
 # Routers translate service exceptions to HTTP responses, this is the transformation layer following SRP

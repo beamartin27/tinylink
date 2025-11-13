@@ -103,5 +103,6 @@ class LinkService:
             "last_access_at": self._parse_iso(rec.get("last_access_at")),
         }
 
-class _NoChange: pass
+class _NoChange: 
+    pass
 _NOCHANGE = _NoChange() # sentinel idea so we can distinguish “don’t touch this field” from “set to null”
