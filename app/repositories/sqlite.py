@@ -1,7 +1,6 @@
 # app/repositories/sqlite.py
 from typing import Dict, Any, List, Optional
 import sqlite3
-from pathlib import Path
 
 class SqliteLinkRepository:
     def __init__(self, db_path: str):

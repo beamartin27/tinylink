@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, UTC
 from ..repositories.base import LinkRepository
 from .codes import generate_unique_code  # your original code strategy
 
@@ -27,7 +27,7 @@ class LinkService:
             raise ValueError("Invalid target_url")
 
         code = generate_unique_code(lambda c: self.repo.get_by_code(c) is not None)
-        now_iso = datetime.utcnow().isoformat()
+        now_iso = datetime.now(UTC).isoformat()
 
         rec = self.repo.create({
             "short_code": code,
@@ -82,14 +82,25 @@ class LinkService:
         expires = rec.get("expires_at")
         if expires:
             try:
-                if datetime.fromisoformat(expires) <= datetime.utcnow():
+                exp_dt = datetime.fromisoformat(expires)
+                # If naive, treat as UTC (your tests send ISO strings; this keeps it safe)
+                if exp_dt.tzinfo is None:
+                    exp_dt = exp_dt.replace(tzinfo=UTC)
+                if exp_dt <= datetime.now(UTC):
                     raise PermissionError("expired")
             except Exception:
                 raise PermissionError("expired")
 
-        # increment clicks
-        self.repo.update(rec["id"], {"clicks": rec.get("clicks", 0) + 1})
-        return rec  # router will redirect to rec["target_url"]
+        # increment clicks + stamp last access
+        now_iso = datetime.now(UTC).isoformat()
+        updated = self.repo.update(
+            rec["id"],
+            {
+                "clicks": rec.get("clicks", 0) + 1,
+                "last_access_at": now_iso,
+            },
+        )
+        return updated
 
     # shape into the public schema your UI expects
     def _shape(self, rec: Dict[str, Any]) -> Dict[str, Any]:
