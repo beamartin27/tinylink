@@ -1,4 +1,5 @@
-import secrets, string # secrets: cryptographically secure random generator
+import secrets
+import string # secrets: cryptographically secure random generator
 
 ALPHABET = string.ascii_letters + string.digits # set of characters used for codes: 62 possibilities
 LENGTH = 6 # With 62^6 combos ≈ 56 billion possible codes.

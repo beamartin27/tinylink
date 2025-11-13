@@ -35,6 +35,8 @@ jobs:
         run: |
           pip install -r requirements.txt || true
           pip install pytest pytest-cov
+      - name: Make repo importable (PYTHONPATH)
+        run: echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
       - name: Run pytest with coverage
         run: |
           pytest -q --cov=app --cov-report=xml --cov-fail-under=70
