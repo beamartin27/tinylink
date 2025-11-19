@@ -1,4 +1,5 @@
 # app/repositories/sqlite.py
+from datetime import datetime
 from typing import Dict, Any, List, Optional
 import sqlite3
 
@@ -47,10 +48,19 @@ class SqliteLinkRepository:
     def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
         # Accepts 'clicks' in data; writes 'click_count' to DB
         clicks = data.get("clicks", 0)
+
+        expires = data.get("expires_at")
+        if isinstance(expires, datetime):
+            expires = expires.isoformat()
+
+        created = data.get("created_at")
+        if isinstance(created, datetime):
+            created = created.isoformat()
+
         with self._conn() as con:
             cur = con.execute(
                 "INSERT INTO links(short_code, target_url, created_at, expires_at, click_count) VALUES (?,?,?,?,?)",
-                (data["short_code"], data["target_url"], data["created_at"], data.get("expires_at"), clicks),
+                (data["short_code"], data["target_url"], created, expires, clicks),
             )
             new_id = cur.lastrowid
             row = con.execute("SELECT * FROM links WHERE id=?", (new_id,)).fetchone()
@@ -67,6 +77,11 @@ class SqliteLinkRepository:
         with self._conn() as con:
             row = con.execute("SELECT * FROM links WHERE short_code=?", (code,)).fetchone()
             return self._row_to_dict(row) if row else None
+        
+    def get_by_id(self, link_id: int) -> Optional[Dict[str, Any]]:
+        with self._conn() as con:
+            row = con.execute("SELECT * FROM links WHERE id=?", (link_id,)).fetchone()
+            return self._row_to_dict(row) if row else None
 
     def update(self, link_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
         # Translate 'clicks' -> 'click_count' if present
@@ -77,14 +92,20 @@ class SqliteLinkRepository:
             sets.append("target_url=?")
             params.append(data["target_url"])
         if "expires_at" in data:
+            exp = data["expires_at"]
+            if isinstance(exp, datetime):
+                exp = exp.isoformat()
             sets.append("expires_at=?")
-            params.append(data["expires_at"])
+            params.append(exp)
         if "clicks" in data:
             sets.append("click_count=?")
             params.append(data["clicks"])
         if "last_access_at" in data:
+            la = data["last_access_at"]
+            if isinstance(la, datetime):
+                la = la.isoformat()
             sets.append("last_access_at=?")
-            params.append(data["last_access_at"])
+            params.append(la)
 
         if not sets:
             # nothing to update; return current row
