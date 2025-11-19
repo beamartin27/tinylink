@@ -20,8 +20,6 @@ def make_client_with_tmpdb(): # Generate clients for the tests with temp db
 
     from app.main import create_app  # import now, picks up APP_DB_PATH
     app = create_app()
-    from app import db
-    db.init_db()  # against tmp DB,create the schema in that file.
 
     client = TestClient(app, follow_redirects=False) # Returns a TestClient bound to this app + the path to the temp DB.
     return client, tmpdb.name
