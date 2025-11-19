@@ -4,7 +4,7 @@ Minimal URL shortener built with **FastAPI + SQLite** to serve as the base for a
 Includes a tiny UI (Jinja/HTML) and a REST API with CRUD, redirect, and QR generation.
 
 > **Status at submission**: UI + API fully working for the required features.  
-> The service auto-detects the request host, so short links & QR codes work locally and via ngrok without extra config.
+> Short links & QR codes use a configurable base URL (`APP_BASE_URL`), so you can point them to localhost, ngrok, or a deployed domain.
 
 ---
 
@@ -49,32 +49,41 @@ Install everything from `requirements.txt`.
 ```
 tinylink/
 ├─ app/
-│  ├─ main.py              # FastAPI app factory, routers mount, UI route, health, handlers
-│  ├─ db.py                # SQLite schema + CRUD helpers (single DB path; tests use temp DBs)
-│  ├─ models.py            # Pydantic models (LinkCreate, LinkUpdate, LinkOut)
-│  ├─ routers/
-│  │  ├─ links.py          # /api/links[...] (CRUD + QR)
-│  │  └─ redirect.py       # /{code} (302 or 410)
-│  ├─ services/
-│  │  ├─ codes.py          # short code generator (collision-safe)
-│  │  └─ qrcodes.py        # QR PNG generator
-|  ├─ static
-|  |  ├─ css/
-|  |  |  └─ index.css      # styling for frontend
-|  |  └─ js
-|  |     └─ index.js       # frontend logic
-│  ├─ templates/
-│  │  └─ index.html        # minimal UI (html)
-│  └─ utils.py             # error envelope helper
+│ ├─ main.py                   # FastAPI app factory, routers, UI route, health, handlers
+│ ├─ models.py                 # Pydantic models (LinkCreate, LinkUpdate, LinkOut, ErrorOut)
+│ ├─ settings.py               # Settings (APP_ENV, DB_PATH, APP_BASE_URL, metrics toggle)
+│ ├─ utils.py                  # error envelope helper
+│ ├─ metrics.py                # Prometheus middleware + /metrics endpoint
+│ ├─ deps.py                   # DI helpers (get_repo, get_service)
+│ ├─ repositories/
+│ │ ├─ base.py                 # LinkRepository protocol
+│ │ └─ sqlite.py               # SqliteLinkRepository implementation
+│ ├─ services/
+│ │ ├─ codes.py                # low-level code generator
+│ │ ├─ codes_strategy.py       # CodeStrategy abstraction + RandomCodeStrategy
+│ │ ├─ link_service.py         # business logic (create/update/resolve/delete)
+│ │ └─ qrcodes.py              # QR PNG generator
+│ ├─ routers/
+│ │ ├─ links.py                # /api/links[...] (CRUD + QR)
+│ │ └─ redirect.py             # /{code} (302 or 410)
+│ ├─ static/
+│ │ ├─ css/index.css           # styling for frontend
+│ │ └─ js/index.js             # frontend logic
+│ └─ templates/
+│ └─ index.html                # minimal UI
 ├─ docs/
-│  ├─ HLD.md               # high-level design
-│  ├─ LLD.md               # low-level design
-│  ├─ PLANNING.md          # goals & phases
-│  └─ SRS.md               # requirements
+│ ├─ PLANNING.md               # goals & phases
+│ ├─ HLD.md                    # high-level design
+│ ├─ LLD.md                    # low-level design
+│ ├─ SRS.md                    # requirements
+│ ├─ O&M.md                    # ops & maintenance
+│ └─ REFACTOR_PLAN.md          # A2 refactor notes
 ├─ tests/
-│  └─ test_links.py        # unit/integration/system tests
-├─ .gitignore
-├─ app.db                  # SQLite DB (created on first run)
+│ ├─ unit/
+│ │ ├─ test_codes_strategy.py
+│ │ └─ test_link_service.py
+│ └─ integration/
+│ └─ test_links_api.py
 ├─ requirements.txt
 ├─ dockerfile
 ├─ .dockerignore
@@ -108,16 +117,33 @@ pip install -r requirements.txt
 
 # 3) Open TWO terminals
 
-# Terminal A — start the app
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-# Terminal B — start the tunnel
+# Terminal A — start the tunnel
 ngrok http 8000
 
-# 4) Open the HTTPS "Forwarding" URL from ngrok in the browser.
-#    The app auto-detects the public host, so short links & QR codes
-#    will use that ngrok domain (scannable from any phone).
+# ngrok will show something like:
+# Forwarding https://1e57f896e13.ngrok-free.app -> http://localhost:8000
+# Copy that HTTPS URL (https://1e57f896e13.ngrok-free.app).
+
+# Terminal B — Start the app with APP_BASE_URL
+
+# Git bash / Linux / macOS
+export APP_BASE_URL="https://<your-ngrok>.ngrok-free.app" 
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# PowerShell
+$env:APP_BASE_URL = "https://<your-ngrok>.ngrok-free.app"
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+
+4) Use it
+
+* Open the same HTTPS ngrok URL in your browser.
+* Created short links / QR codes will embed that ngrok domain, so you can scan them from your phone.
+
+  Note: if ngrok gives you a new URL (e.g. you restart it), you must:
+    * stop uvicorn
+    * update APP_BASE_URL
+    * start uvicorn again
 
 **Alternative** (local only, no ngrok):
 
@@ -166,9 +192,13 @@ Open the ngrok Forwarding URL.
 **Environment variables** (optional):
 
 - `DB_PATH` — override the DB location (default: `/app/app.db`)
+- `APP_BASE_URL` — public base URL for generated links/QRs
+  (e.g. `https://your-ngrok.ngrok-free.app` or your deployed domain)
 
 ```bash
-docker run --rm -e DB_PATH=/app/data/app.db -v "$PWD/data:/app/data" -p 8000:8000 tinylink:latest
+docker run --rm \
+  -e APP_BASE_URL="https://<your-ngrok>.ngrok-free.app" \
+  -p 8000:8000 tinylink:latest
 ```
 
 ---
@@ -306,5 +336,6 @@ ruff check .
 
 ## Notes
 
-- The app derives the base URL from the incoming request, so you don't need to set `BASE_URL`. This makes QR codes/links correct for local, LAN, or ngrok usage automatically.
+- The app reads `APP_BASE_URL` for the public base URL (default: `http://localhost:8000`).
+  Set this to your ngrok URL or deployed domain so links/QRs are correct.
 - The database path can be overridden with `DB_PATH` (env var) if needed
