@@ -22,12 +22,13 @@ class CodeStrategy(ABC):
 class RandomCodeStrategy(CodeStrategy):
     """Current behavior: random codes with collision retries."""
 
-    def __init__(self, max_tries: int = 5) -> None:
+    def __init__(self, length: int = codes.LENGTH, max_tries: int = 5) -> None:
+        self.length = length
         self.max_tries = max_tries
 
     def generate(self, exists_fn: Callable[[str], bool]) -> str:
         # Delegate to your existing function so tests on codes.py still describe reality.
-        return codes.generate_unique_code(exists_fn, max_tries=self.max_tries)
+        return codes.generate_unique_code(exists_fn, max_tries=self.max_tries, length=self.length,)
 
 
 # If more strategies are ever added, register them here.

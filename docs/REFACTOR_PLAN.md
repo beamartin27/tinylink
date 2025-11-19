@@ -156,35 +156,49 @@ class LinkRepository(Protocol):
 
 ## 5. Testing and coverage
 
-Tests live under `tests/` and treat the app as an installed package (`from app.services import codes`).
+Tests live under `tests/` and treat the app as an installed package (`from app.services import codes`, `from app.main import create_app`).
 
-**make_client_with_tmpdb():**
-- Creates a temporary SQLite file.
-- Sets `APP_DB_PATH`.
-- Builds the app via `create_app()`.
-- Uses `TestClient` to exercise the API.
+### Test types
 
-**Test types:**
-- **Unit test:** `test_code_generator_collision` on `codes.generate_unique_code`.
-- **Integration / E2E tests:** T1–T7 cover:
-  - CRUD
-  - Redirect behavior and analytics
-  - QR endpoint
-  - Expired links (410).
+- **Unit tests (`tests/unit/`):**
+  - `test_codes_strategy.py`
+    - Verifies `RandomCodeStrategy` respects `length` / `max_tries` and delegates to `codes.generate_unique_code`.
+  - `test_link_service.py`
+    - Uses a fake in-memory repo to test business rules of `LinkService`:
+      - URL validation
+      - Create/list/get/update/delete
+      - Expiry logic (raises `PermissionError` when expired)
+      - Click counting and `last_access_at` updates on `resolve()`.
+- **Integration / API tests (`tests/integration/`):**
+  - `test_links_api.py`
+    - Uses a temporary SQLite DB (`tempfile.NamedTemporaryFile`) and `APP_DB_PATH`.
+    - Builds the app via `create_app()` and drives it through `TestClient`.
+    - Covers:
+      - CRUD (T1–T4)
+      - Redirect behavior and analytics (T5)
+      - QR endpoint (T6)
+      - Expired links returning HTTP 410 (T7).
 
-**CI command (and local recommendation):**
+### How tests bootstrap the DB
+
+- `make_client_with_tmpdb()`:
+  - Creates a temp SQLite file.
+  - Sets `APP_DB_PATH` to point to it.
+  - Calls `create_app()` so `SqliteLinkRepository.init_schema()` runs via DI.
+  - Returns a `TestClient` bound to that app.
+
+### CI / local command
+
 ```bash
 python -m pytest -q --cov=app --cov-report=xml --cov-fail-under=70
 ```
-
-**Current coverage:** ≈89.6%.
-
 ---
 
 ## 6. Status & next steps
 
 - **Step 3** (repositories + services + routers + metrics + settings) has been implemented and validated by tests.
-- Legacy `app/db.py` is no longer used in the new architecture; SQL logic is centralized in `SqliteLinkRepository`.
-- **Next step (Step 4)** will focus on:
-  - Adding more focused unit tests (e.g. service behavior with a fake repo).
-  - Ensuring test structure and docs clearly explain how to run tests and interpret coverage.
+- Legacy `app/db.py` has been removed; SQL logic is centralized in `SqliteLinkRepository`.
+- **Step 4 (testing)**:
+  - Unit tests for `CodeStrategy` and `LinkService` are in place.
+  - Integration tests cover the FastAPI endpoints end-to-end.
+  - Coverage gate (`--cov-fail-under=70`) is enforced and currently at ~91%.

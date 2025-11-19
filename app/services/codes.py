@@ -7,10 +7,18 @@ LENGTH = 6 # With 62^6 combos ≈ 56 billion possible codes.
 def generate_code(length: int = LENGTH) -> str:
     return ''.join(secrets.choice(ALPHABET) for _ in range(length)) # picks a random char from the alphabet, do that lenght times and join into string
 
-def generate_unique_code(exists_fn, max_tries: int = 5) -> str: # When you call it you pass a function exists_fn that checks the existance (eg: exists_code or fake_exists)
-    for _ in range(max_tries): # Avoid collissions with 5 max tries, else generate it with lenght 7 (rare)
-        c = generate_code()
+def generate_unique_code(exists_fn, *, max_tries: int = 5, length: int = LENGTH,) -> str:
+    """
+    Try to generate a unique short code of the given length.
+
+    - `exists_fn(code) -> bool` tells us if the code is already taken.
+    - `max_tries` limits how many collisions we tolerate.
+    - `length` controls the base length of generated codes.
+    """
+    for _ in range(max_tries):
+        c = generate_code(length=length)
         if not exists_fn(c):
             return c
-    # rare fallback
-    return generate_code(length=LENGTH + 1)
+
+    # rare fallback: bump length by 1 if we somehow collide too much
+    return generate_code(length=length + 1)
