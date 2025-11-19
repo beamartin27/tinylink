@@ -6,9 +6,9 @@ class Settings:
     def __init__(self) -> None:
         self.app_env = os.getenv("APP_ENV", "dev")
         # Where the SQLite file lives (or :memory: for tests)
-        self.db_path = os.getenv("APP_DB_PATH", "Rapp.db")
+        self.db_path = os.getenv("APP_DB_PATH", "app.db")
         # Public base URL to build short links (optional)
-        self.base_url = os.getenv("APP_BASE_URL", "http://localhost:8000")
+        self.base_url = os.getenv("APP_BASE_URL", "http://localhost:8000")# APP_BASE_URL: public base URL for short links (e.g. ngrok URL in dev)
         # Metrics toggle (on by default)
         self.enable_metrics = os.getenv("APP_ENABLE_METRICS", "1") == "1"
         # NEW: which code strategy to use ("random", later maybe "hash", etc.)
