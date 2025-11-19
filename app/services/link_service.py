@@ -101,7 +101,7 @@ class LinkService:
                 "last_access_at": now_iso,
             },
         )
-        return updated
+        return self._shape(updated) # return public shape (click_count, parsed datetimes, short_url, …)
 
     # shape into the public schema your UI expects
     def _shape(self, rec: Dict[str, Any]) -> Dict[str, Any]:

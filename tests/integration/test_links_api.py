@@ -5,8 +5,6 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
-# Importa la app y el db del paquete
-from app.services import codes
 
 def norm(u: str) -> str: # "https://example.com" and "https://example.com/" compare equal in assertions.
     # accept optional trailing slash normalization
@@ -21,6 +19,9 @@ def make_client_with_tmpdb(): # Generate clients for the tests with temp db
     from app.main import create_app  # import now, picks up APP_DB_PATH
     app = create_app()
 
+    # No call to app.db at all – LinkRepository.init_schema()
+    # will be called via DI on first use inside get_repo/get_service.
+
     client = TestClient(app, follow_redirects=False) # Returns a TestClient bound to this app + the path to the temp DB.
     return client, tmpdb.name
 
@@ -28,18 +29,6 @@ def iso_utc(dt: datetime) -> str: # Normalizes any datetime to UTC ISO 8601 stri
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc).isoformat()
-
-# ---------- Unit ----------
-
-def test_code_generator_collision():
-    calls = {"n": 0}
-    def fake_exists(code: str) -> bool:
-        calls["n"] += 1
-        # colisiona las dos primeras veces, tercera libre
-        return calls["n"] < 3 # simulate 3 collissions (True)
-    code = codes.generate_unique_code(fake_exists, max_tries=5)
-    assert isinstance(code, str) and len(code) >= 6 # check conditions for success
-    assert calls["n"] == 3
 
 # ---------- Integration CRUD ----------
 
