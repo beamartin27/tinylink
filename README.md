@@ -51,7 +51,7 @@ tinylink/
 ├─ app/
 │ ├─ main.py                   # FastAPI app factory, routers, UI route, health, handlers
 │ ├─ models.py                 # Pydantic models (LinkCreate, LinkUpdate, LinkOut, ErrorOut)
-│ ├─ settings.py               # Settings (APP_ENV, DB_PATH, APP_BASE_URL, metrics toggle)
+│ ├─ settings.py               # Settings (APP_ENV, APP_DB_PATH, APP_BASE_URL, metrics toggle)
 │ ├─ utils.py                  # error envelope helper
 │ ├─ metrics.py                # Prometheus middleware + /metrics endpoint
 │ ├─ deps.py                   # DI helpers (get_repo, get_service)
@@ -191,12 +191,13 @@ Open the ngrok Forwarding URL.
 
 **Environment variables** (optional):
 
-- `DB_PATH` — override the DB location (default: `/app/app.db`)
+- `APP_DB_PATH` — override the DB location (default: `/app/app.db`)
 - `APP_BASE_URL` — public base URL for generated links/QRs
   (e.g. `https://your-ngrok.ngrok-free.app` or your deployed domain)
 
 ```bash
 docker run --rm \
+  -e APP_DB_PATH="/app/app.db" \
   -e APP_BASE_URL="https://<your-ngrok>.ngrok-free.app" \
   -p 8000:8000 tinylink:latest
 ```
@@ -299,9 +300,9 @@ This will:
 **Useful variants**:
 
 ```bash
-pytest -m pytest -vv                # more verbose output
-pytest -m pytest -k T5 -vv          # run tests matching "T5"
-pytest -m pytest -q --maxfail=1     # stop on first failure
+pytest -vv                # more verbose output
+pytest -k T5 -vv          # run tests matching "T5"
+pytest -q --maxfail=1     # stop on first failure
 ```
 
 **Linting**:
@@ -324,6 +325,22 @@ ruff check .
 
 ---
 
+## Monitoring with Prometheus (optional)
+
+The app exposes Prometheus metrics at `GET /metrics`.
+
+An example Prometheus config is provided at `docs/prometheus.example.yml`. Steps:
+
+1. Install Prometheus from the official website (no binary is committed in this repo).
+2. Start your app on port 8000 (see "Run" section).
+3. Run Prometheus pointing to the example config, e.g. on Windows:
+
+   ```powershell
+   cd C:\prometheus
+   .\prometheus.exe --config.file="C:\path\to\tinylink\docs\prometheus.example.yml"
+
+---
+
 ## Troubleshooting
 
 - **QR not working externally**: Ensure ngrok is running and you're using the ngrok HTTPS URL.
@@ -338,4 +355,5 @@ ruff check .
 
 - The app reads `APP_BASE_URL` for the public base URL (default: `http://localhost:8000`).
   Set this to your ngrok URL or deployed domain so links/QRs are correct.
-- The database path can be overridden with `DB_PATH` (env var) if needed
+- The database path can be overridden with `APP_DB_PATH` (env var) if needed
+- Metrics are exposed at /metrics when APP_ENABLE_METRICS=1 (default).
