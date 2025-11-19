@@ -1,0 +1,38 @@
+name: CD
+
+on:
+  push:
+    branches: [ master ]
+
+permissions:
+  contents: read
+  packages: write   # needed to push to GHCR
+
+jobs:
+  publish-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/tinylink:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/tinylink:latest
+
+      - name: Placeholder deploy
+        run: |
+          echo "Here is where we'd deploy tinylink:latest to Render/Fly/VM."
+          echo "Documented as future work in the report."
