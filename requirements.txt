@@ -4,6 +4,8 @@ pydantic
 qrcode
 pillow
 pytest
+pytest-cov
+ruff
 httpx
 Jinja2>=3.1
 python-dateutil
