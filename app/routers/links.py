@@ -1,3 +1,4 @@
+# app/routers/links.py
 from typing import List, Any
 from fastapi import APIRouter, HTTPException, Request, Response, Depends
 from ..models import LinkCreate, LinkUpdate, LinkOut
@@ -7,7 +8,7 @@ from ..deps import get_service
 from ..services.qrcodes import make_qr_png  # same as before
 
 # Routers translate service exceptions to HTTP responses, this is the transformation layer following SRP
-# Now it doesn't talk to sqlite, generate codes or parse dates
+# Now it doesn't talk to sqlite Depends(get_service), generate codes or parse dates
 
 router = APIRouter() # Instance of the router for attaching routes
 

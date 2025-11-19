@@ -8,7 +8,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 
 # Internal modules per HLD/LLD
-from .db import init_db
 from .routers import links, redirect
 from .utils import err
 
@@ -67,7 +66,6 @@ def create_app() -> FastAPI:
 
     # --- DB schema (resolves APP_DB_PATH or defaults to app.db internally) ---
     # This keeps A1 behavior working until routers are refactored to DI.
-    init_db()
 
     # --- Routers (A method on the FastAPI app that mounts an APIRouter) ---
     # links.router and redirect.router: each is an APIRouter created in your links.py and redirect.py.
