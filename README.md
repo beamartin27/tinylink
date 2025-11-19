@@ -237,7 +237,15 @@ GET <HOST>/api/links/<code>/qr   → image/png
 
 ## Running tests
 
-Tests run fully in-process (no Uvicorn/ngrok needed) and use a temporary SQLite DB per test, so your real `app.db` is untouched.
+Tests run fully in-process (no Uvicorn/ngrok needed) and use a temporary SQLite DB for integration tests, so your real application database is never touched.
+
+### Layout
+
+- `tests/unit/`
+  - `test_codes_strategy.py` → tests `RandomCodeStrategy` and code generation behavior in isolation.
+  - `test_link_service.py` → tests `LinkService` using a fake in-memory repository (no SQLite).
+- `tests/integration/`
+  - `test_links_api.py` → tests the FastAPI app end-to-end (create, list, update, delete, redirect, QR, expiry) against a temp SQLite DB.
 
 **Install dev deps** (once):
 
