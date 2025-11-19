@@ -246,18 +246,30 @@ pip install -r requirements.txt
 # If needed: pip install pytest httpx
 ```
 
-**Run tests**:
+**Run tests with coverage**:
 
 ```bash
-python -m pytest -q
+python -m pytest -q --cov=app --cov-report=xml --cov-fail-under=70
 ```
 
-**Tips**:
+This will:
+* Run all tests under tests/
+* Measure coverage for the app package
+* Fail the run if coverage drops below 70%
+* Write coverage.xml for CI tooling
+
+**Useful variants**:
 
 ```bash
-pytest -vv                # more output
-pytest -k T5 -vv          # run tests matching "T5"
-pytest -q --maxfail=1     # stop on first failure
+pytest -m pytest -vv                # more verbose output
+pytest -m pytest -k T5 -vv          # run tests matching "T5"
+pytest -m pytest -q --maxfail=1     # stop on first failure
+```
+
+**Linting**:
+
+```bash
+ruff check .
 ```
 
 ---

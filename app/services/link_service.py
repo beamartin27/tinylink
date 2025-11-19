@@ -1,12 +1,13 @@
 from typing import Optional, Dict, Any, List
 from datetime import datetime, UTC
 from ..repositories.base import LinkRepository
-from .codes import generate_unique_code  # your original code strategy
+from .codes_strategy import RandomCodeStrategy, CodeStrategy
 
 class LinkService:
-    def __init__(self, repo: LinkRepository, base_url: str):
+    def __init__(self, repo: LinkRepository, base_url: str, code_strategy: Optional[CodeStrategy] = None):
         self.repo = repo
         self.base_url = base_url.rstrip("/")
+        self.code_strategy = code_strategy or RandomCodeStrategy()
 
     # --- helpers ---
     def _short_url(self, code: str) -> str:
@@ -26,7 +27,7 @@ class LinkService:
         if not target_url or not str(target_url).startswith(("http://", "https://")):
             raise ValueError("Invalid target_url")
 
-        code = generate_unique_code(lambda c: self.repo.get_by_code(c) is not None)
+        code = self.code_strategy.generate(lambda c: self.repo.get_by_code(c) is not None)
         now_iso = datetime.now(UTC).isoformat()
 
         rec = self.repo.create({

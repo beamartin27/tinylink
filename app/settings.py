@@ -11,6 +11,8 @@ class Settings:
         self.base_url = os.getenv("APP_BASE_URL", "http://localhost:8000")
         # Metrics toggle (on by default)
         self.enable_metrics = os.getenv("APP_ENABLE_METRICS", "1") == "1"
+        # NEW: which code strategy to use ("random", later maybe "hash", etc.)
+        self.code_strategy = os.getenv("APP_CODE_STRATEGY", "random")
 
 @lru_cache
 def get_settings() -> Settings:
