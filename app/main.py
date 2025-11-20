@@ -12,7 +12,6 @@ from .routers import links, redirect
 from .utils import err
 
 # NEW: settings + metrics + repo DI (repo not used by routers yet; that’s Step 3)
-from .settings import get_settings
 from .metrics import MetricsMiddleware, metrics_endpoint
 
 # Templates (absolute path, so it works regardless of CWD)
@@ -25,8 +24,6 @@ def create_app() -> FastAPI:
     Tests import and call this; production uses the global 'app' below.
     """
     app = FastAPI(title="TinyLink+")
-
-    settings = get_settings()
 
      # --- Metrics (/metrics) ---
     app.add_middleware(MetricsMiddleware)
