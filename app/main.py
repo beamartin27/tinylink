@@ -28,13 +28,12 @@ def create_app() -> FastAPI:
 
     settings = get_settings()
 
-    # --- Metrics (/metrics) ---
-    if settings.enable_metrics:
-        app.add_middleware(MetricsMiddleware)
+     # --- Metrics (/metrics) ---
+    app.add_middleware(MetricsMiddleware)
 
-        @app.get("/metrics")
-        def _metrics():
-            return metrics_endpoint()
+    @app.get("/metrics")
+    def _metrics():
+        return metrics_endpoint()
 
     # --- Error handlers (uniform JSON envelope + no-cache headers) ---
     # @app are decorators that register a function as the handler for a given exception type.
@@ -64,31 +63,29 @@ def create_app() -> FastAPI:
             },
         )
 
-    # --- DB schema (resolves APP_DB_PATH or defaults to app.db internally) ---
-    # This keeps A1 behavior working until routers are refactored to DI.
-
-    # --- Routers (A method on the FastAPI app that mounts an APIRouter) ---
-    # links.router and redirect.router: each is an APIRouter created in your links.py and redirect.py.
+    # --- Routers (API) ---
     app.include_router(links.router, prefix="/api/links", tags=["links"])
-    app.include_router(redirect.router, tags=["redirect"])  # /{code}
 
     # --- Health & UI ---
-    @app.get("/health") # route decorator that registers this function to handle GET /path. The decorator registers health() as the handler for the /health route.
+    @app.get("/health")
     def health():
         return {"status": "ok"}
 
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request):
-        return templates.TemplateResponse("index.html", {"request": request, "msg": "TinyLink+ Ready"})
+        return templates.TemplateResponse(
+            "index.html",
+            {"request": request, "msg": "TinyLink+ Ready"},
+        )
 
     # Serve static assets (CSS, JS, images) from the `app/static` folder at /static
     static_dir = Path(__file__).resolve().parent / "static"
     if static_dir.exists():
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-    else:
-        # If the static folder doesn't exist for some reason, we skip mounting to avoid a crash
-        # This keeps tests and environments without a static folder working.
-        pass
+
+    # --- Catch-all redirect router (must be LAST) ---
+    # /{code} – handles short URLs like /fScWcm
+    app.include_router(redirect.router, tags=["redirect"])
 
     return app
 
