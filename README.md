@@ -77,7 +77,11 @@ tinylink/
 │ ├─ LLD.md                    # low-level design
 │ ├─ SRS.md                    # requirements
 │ ├─ O&M.md                    # ops & maintenance
-│ └─ REFACTOR_PLAN.md          # A2 refactor notes
+│ ├─ REPORT.md                 # Assignment 2 refactor report
+│ ├─ TEST_REPORT.md            # Test plan & results
+│ ├─ prometheus.example.yml    # Example Prometheus config
+│ ├─ prometheus_targets.png    # Prometheus targets screenshot
+│ └─ prometheus_query.png      # Prometheus graph screenshot
 ├─ tests/
 │ ├─ unit/
 │ │ ├─ test_codes_strategy.py
@@ -285,6 +289,20 @@ pip install -r requirements.txt
 # If needed: pip install pytest httpx
 ```
 
+Before running pytest locally, **make the project importable**:
+
+* Git Bash / Linux / macOS
+
+```bash
+export PYTHONPATH=$PWD
+```
+
+* PowerShell
+
+```powershell
+$env:PYTHONPATH = (Get-Location).Path
+```
+
 **Run tests with coverage**:
 
 ```bash
@@ -338,6 +356,14 @@ An example Prometheus config is provided at `docs/prometheus.example.yml`. Steps
    ```powershell
    cd C:\prometheus
    .\prometheus.exe --config.file="C:\path\to\tinylink\docs\prometheus.example.yml"
+
+Once Prometheus is running, go to http://localhost:9090, check:
+- Status → Targets: tinylink is UP.
+- Graph: run a query like `http_requests_total` and hit the UI a few times.
+
+Screenshots of a working setup are in:
+- `docs/prometheus_targets.png`
+- `docs/prometheus_query.png`
 
 ---
 

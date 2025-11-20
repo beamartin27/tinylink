@@ -103,5 +103,19 @@ No test ever touches the real application database (`app.db` on disk).
 
 Recommended local (and used in CI):
 
+Before running pytest locally, **make the project importable**:
+
+* Git Bash / Linux / macOS
+
+```bash
+export PYTHONPATH=$PWD
+```
+
+* PowerShell
+
+```powershell
+$env:PYTHONPATH = (Get-Location).Path
+```
+
 ```bash
 python -m pytest -q --cov=app --cov-report=xml --cov-fail-under=70
